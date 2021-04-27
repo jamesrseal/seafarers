@@ -112,10 +112,10 @@ fig_table = go.Figure(data=[go.Table(
 
 external_stylesheets = [
     {
-        "href": "https://fonts.googleapis.com/css2?"
-                "family=Lato:wght@400;700&display=swap",
+        "href": "https://fonts.googleapis.com/css2?" 
+                "family=Roboto:wght@300&display=swap",
         "rel": "stylesheet",
-    },
+    }
 ]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = 'Abandoned Seafarers'
@@ -124,14 +124,23 @@ app.layout = html.Div(
     children=[
         html.Div(
             children=[
-                html.P(children="🚢", className="header-emoji"),
+                html.P(children="🚢",
+                       className="header-emoji"),
                 html.H1(
-                    children="Abandoned Seafarers", className="header-title"
+                    children="Abandoned Seafarers",
+                    className="header-title"
                 ),
                 html.P(
-                    children="View abandoned seafarers and vessels as recorded by the ILO",
+                    children="See where vessels and seafarers have been abandoned around the globe",
                     className="header-description",
                 ),
+                html.A(
+                    #id='link',
+                    children="Abandoned seafarers data recorded by the ILO",
+                    href="https://www.ilo.org/dyn/seafarers/seafarersBrowse.list?p_lang=en",
+                    target='_blank',
+                    className='link',
+                )
             ],
             className="header",
         ),
@@ -139,49 +148,58 @@ app.layout = html.Div(
             children=[
                 html.Div(
                     children=[
-                        html.Div(children="Region", className="menu-title"),
+                        html.Div(children="Ship name", className="menu-title"),
                         dcc.Dropdown(
-                            # id="region-filter",
-                            # options=[
-                            #     {"label": region, "value": region}
-                            #     for region in np.sort(data.region.unique())
-                            # ],
-                            # value="Albany",
-                            # clearable=False,
-                            # className="dropdown",
+                             id="ship-name-filter",
+                             options=[{"label": i, "value": i} for i in df['Ship name'].unique()],
+                             clearable=True,
+                             className="dropdown",
                         ),
                     ]
                 ),
                 html.Div(
                     children=[
-                        html.Div(children="Type", className="menu-title"),
+                        html.Div(children="Ship status", className="menu-title"),
                         dcc.Dropdown(
-                            # id="type-filter",
-                            # options=[
-                            #     {"label": avocado_type, "value": avocado_type}
-                            #     for avocado_type in data.type.unique()
-                            # ],
-                            # value="organic",
-                            # clearable=False,
-                            # searchable=False,
-                            # className="dropdown",
+                            id="ship-status-filter",
+                            options=[{"label": i, "value": i} for i in df['Ship status'].unique()],
+                            clearable=True,
+                            className="dropdown",
                         ),
                     ],
                 ),
                 html.Div(
                     children=[
-                        html.Div(
-                            children="Date Range",
-                            className="menu-title"
-                            ),
-                        dcc.DatePickerRange(
-                            # id="date-range",
-                            # min_date_allowed=data.Date.min().date(),
-                            # max_date_allowed=data.Date.max().date(),
-                            # start_date=data.Date.min().date(),
-                            # end_date=data.Date.max().date(),
+                        html.Div(children="Ship flag", className="menu-title"),
+                        dcc.Dropdown(
+                            id="ship-flag-filter",
+                            options=[{"label": i, "value": i} for i in df['Flag'].unique()],
+                            clearable=True,
+                            className="dropdown",
                         ),
-                    ]
+                    ],
+                ),
+                html.Div(
+                    children=[
+                        html.Div(children="Port of abandonment", className="menu-title"),
+                        dcc.Dropdown(
+                            id="ship-port-filter",
+                            options=[{"label": i, "value": i} for i in df['Port of abandonment'].unique()],
+                            clearable=True,
+                            className="dropdown",
+                        ),
+                    ],
+                ),
+                html.Div(
+                    children=[
+                        html.Div(children="No. Seafarers", className="menu-title"),
+                        dcc.Dropdown(
+                            id="seafarers-filter",
+                            options=[{"label": i, "value": i} for i in df['No. of Seafarers'].unique()],
+                            clearable=True,
+                            className="dropdown",
+                        ),
+                    ],
                 ),
             ],
             className="menu",
