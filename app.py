@@ -151,7 +151,7 @@ app.layout = html.Div(
                         html.Div(children="Ship name", className="menu-title"),
                         dcc.Dropdown(
                              id="ship-name-filter",
-                             options=[{"label": i, "value": i} for i in df['Ship name'].unique()],
+                             options=[{"label": i, "value": i} for i in df.sort_values(['Ship name'])['Ship name'].unique()],
                              clearable=True,
                              className="dropdown",
                         ),
@@ -162,7 +162,7 @@ app.layout = html.Div(
                         html.Div(children="Ship status", className="menu-title"),
                         dcc.Dropdown(
                             id="ship-status-filter",
-                            options=[{"label": i, "value": i} for i in df['Ship status'].unique()],
+                            options=[{"label": i, "value": i} for i in df.sort_values(['Ship status'])['Ship status'].unique()],
                             clearable=True,
                             className="dropdown",
                         ),
@@ -173,7 +173,7 @@ app.layout = html.Div(
                         html.Div(children="Ship flag", className="menu-title"),
                         dcc.Dropdown(
                             id="ship-flag-filter",
-                            options=[{"label": i, "value": i} for i in df['Flag'].unique()],
+                            options=[{"label": i, "value": i} for i in df.sort_values(['Flag'])['Flag'].unique()],
                             clearable=True,
                             className="dropdown",
                         ),
@@ -184,7 +184,7 @@ app.layout = html.Div(
                         html.Div(children="Port of abandonment", className="menu-title"),
                         dcc.Dropdown(
                             id="ship-port-filter",
-                            options=[{"label": i, "value": i} for i in df['Port of abandonment'].unique()],
+                            options=[{"label": i, "value": i} for i in df.sort_values(['Port of abandonment'])['Port of abandonment'].unique()],
                             clearable=True,
                             className="dropdown",
                         ),
@@ -195,7 +195,7 @@ app.layout = html.Div(
                         html.Div(children="No. Seafarers", className="menu-title"),
                         dcc.Dropdown(
                             id="seafarers-filter",
-                            options=[{"label": i, "value": i} for i in df['No. of Seafarers'].unique()],
+                            options=[{"label": i, "value": i} for i in df.sort_values(['No. of Seafarers'])['No. of Seafarers'].unique()],
                             clearable=True,
                             className="dropdown",
                         ),
