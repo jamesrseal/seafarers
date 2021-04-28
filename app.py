@@ -83,8 +83,8 @@ fig_table = go.Figure(data=[go.Table(
                         'Abandonment date',
                         'Notification date',
                         'Reporting Member Govt. or Org.',
-                        'No. of Seafarers',
-                        'Circumstances'],
+                        'No. of Seafarers'],
+                        #'Circumstances'],
                 #fill_color='paleturquoise',
                 align='left'
                 ),
@@ -102,8 +102,8 @@ fig_table = go.Figure(data=[go.Table(
                        df['Abandonment date'],
                        df['Notification date'],
                        df['Reporting Member Govt. or Org.'],
-                       df['No. of Seafarers'],
-                       df['Circumstances']],
+                       df['No. of Seafarers']],
+                       #df['Circumstances']],
                #fill_color='lavender',
                align='left'
     ))
