@@ -26,7 +26,7 @@ for items in data:
     else:
         items['Ship status'] = 'unknown'
         items['line color'] = 'rgba' + str(colors.to_rgba('black'))
-        items['fill color'] = 'rgba' + str(colors.to_rgba('darkgray'))
+        items['fill color'] = 'rgba' + str(colors.to_rgba('yellow'))
 
 df = pd.DataFrame.from_dict(data)
 scaler = MinMaxScaler()
@@ -187,23 +187,29 @@ def draw_graph(ship_name, ship_status, ship_port):
     if ship_name is None and ship_status is None and ship_port is None:
         dff = df
 
-    elif ship_name is None:
-        if ship_status is None:
-            dff = df[df['Port of abandonment'] == ship_port]
-        else:
-            dff = df[df['Ship status'] == ship_status]
+    elif ship_name is not None:
+        dff = df[df['Ship name'] == ship_name]
 
-    elif ship_status is None:
-        if ship_name is None:
-            dff = df[df['Port of abandonment'] == ship_port]
-        else:
-            dff = df[df['Ship name'] == ship_name]
+        if ship_status is not None:
+            dff = dff[dff['Ship status'] == ship_status]
+        elif ship_port is not None:
+            dff = dff[dff['Port of abandonment'] == ship_port]
 
-    elif ship_port is None:
-        if ship_name is None:
-            dff = df[df['Ship status'] == ship_status]
-        else:
-            dff = df[df['Ship name'] == ship_name]
+    elif ship_status is not None:
+        dff = df[df['Ship status'] == ship_status]
+
+        if ship_name is not None:
+            dff = dff[dff['Ship name'] == ship_name]
+        elif ship_port is not None:
+            dff = dff[dff['Port of abandonment'] == ship_port]
+
+    elif ship_port is not None:
+        dff = df[df['Port of abandonment'] == ship_port]
+
+        if ship_name is not None:
+            dff = dff[dff['Ship name'] == ship_name]
+        elif ship_status is not None:
+            dff = dff[dff['Ship status'] == ship_status]
 
     marker_size = dff['No. of Seafarers numeric']
 
@@ -255,23 +261,29 @@ def update_table(ship_name, ship_status, ship_port):
     if ship_name is None and ship_status is None and ship_port is None:
         dff = df
 
-    elif ship_name is None:
-        if ship_status is None:
-            dff = df[df['Port of abandonment'] == ship_port]
-        else:
-            dff = df[df['Ship status'] == ship_status]
+    elif ship_name is not None:
+        dff = df[df['Ship name'] == ship_name]
 
-    elif ship_status is None:
-        if ship_name is None:
-            dff = df[df['Port of abandonment'] == ship_port]
-        else:
-            dff = df[df['Ship name'] == ship_name]
+        if ship_status is not None:
+            dff = dff[dff['Ship status'] == ship_status]
+        elif ship_port is not None:
+            dff = dff[dff['Port of abandonment'] == ship_port]
 
-    elif ship_port is None:
-        if ship_name is None:
-            dff = df[df['Ship status'] == ship_status]
-        else:
-            dff = df[df['Ship name'] == ship_name]
+    elif ship_status is not None:
+        dff = df[df['Ship status'] == ship_status]
+
+        if ship_name is not None:
+            dff = dff[dff['Ship name'] == ship_name]
+        elif ship_port is not None:
+            dff = dff[dff['Port of abandonment'] == ship_port]
+
+    elif ship_port is not None:
+        dff = df[df['Port of abandonment'] == ship_port]
+
+        if ship_name is not None:
+            dff = dff[dff['Ship name'] == ship_name]
+        elif ship_status is not None:
+            dff = dff[dff['Ship status'] == ship_status]
 
     #else:
         #dff = pd.DataFrame.from_dict(click_data)
@@ -320,40 +332,57 @@ def update_drop_downs(ship_name, ship_status, ship_port):
     updated_ship_port_options = []
 
     if ship_name is None and ship_status is None and ship_port is None:
-        #dff = df
-        updated_ship_name_options = [{"label": i, "value": i} for i in df.sort_values(['Ship name'])['Ship name'].unique()]
+        dff = df
+        updated_ship_name_options = [{"label": i, "value": i} for i in dff.sort_values(['Ship name'])['Ship name'].unique()]
         updated_ship_status_options = [{"label": i, "value": i} for i in
-                               df.sort_values(['Ship status'])['Ship status'].unique()]
+                               dff.sort_values(['Ship status'])['Ship status'].unique()]
         updated_ship_port_options = [{"label": i, "value": i} for i in
-                             df.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
-        return [updated_ship_name_options, updated_ship_status_options, updated_ship_port_options]
+                             dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
+        #return [updated_ship_name_options, updated_ship_status_options, updated_ship_port_options]
 
     elif ship_name is not None:
 
-        updated_ship_name_options = [{"label": i, "value": i} for i in df.sort_values(['Ship name'])['Ship name'].unique()]
+        dff = df[df['Ship name'] == ship_name]
+        updated_ship_name_options = [{"label": i, "value": i} for i in dff.sort_values(['Ship name'])['Ship name'].unique()]
+        updated_ship_port_options = [{"label": i, "value": i} for i in
+                                     dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
+        updated_ship_status_options = [{"label": i, "value": i} for i in
+                                       dff.sort_values(['Ship status'])['Ship status'].unique()]
+        # if ship_status is not None:
+        #     #dff = dff[dff['Ship status'] == ship_status]
+        #     updated_ship_port_options = [{"label": i, "value": i} for i in
+        #                                  dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
+        # elif ship_port is not None:
+        #     #dff = dff[dff['Port of abandonment'] == ship_port]
+        #     updated_ship_status_options = [{"label": i, "value": i} for i in
+        #                                    dff.sort_values(['Ship status'])['Ship status'].unique()]
+        # else:
+        #     #dff = df[df['Ship name'] == ship_name]
+        #     updated_ship_status_options = [{"label": i, "value": i} for i in
+        #                            dff.sort_values(['Ship status'])['Ship status'].unique()]
+        #     updated_ship_port_options = [{"label": i, "value": i} for i in
+        #                          dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
 
-        if ship_status is not None:
-            dff = df[df['Ship name'] == ship_name]
-            updated_ship_port_options = [{"label": i, "value": i} for i in
-                                    dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
-        else:
-            dff = df[df['Ship name'] == ship_name]
-            updated_ship_status_options = [{"label": i, "value": i} for i in
-                                   dff.sort_values(['Ship status'])['Ship status'].unique()]
-            updated_ship_port_options = [{"label": i, "value": i} for i in
-                                 dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
-
-        return [updated_ship_name_options, updated_ship_status_options, updated_ship_port_options]
+        #return [updated_ship_name_options, updated_ship_status_options, updated_ship_port_options]
 
     elif ship_status is not None:
 
-        updated_ship_status_options = [{"label": i, "value": i} for i in
-                               df.sort_values(['Ship status'])['Ship status'].unique()]
+        dff = df[df['Ship status'] == ship_status]
+        updated_ship_status_options = [{"label": i, "value": i} for i in dff.sort_values(['Ship status'])['Ship status'].unique()]
 
         if ship_name is not None:
             dff = df[df['Ship name'] == ship_name]
+            updated_ship_name_options = [{"label": i, "value": i} for i in
+                                         dff.sort_values(['Ship name'])['Ship name'].unique()]
             updated_ship_port_options = [{"label": i, "value": i} for i in
-                                 dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
+                                         dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
+
+        elif ship_port is not None:
+            dff = dff[dff['Port of abandonment'] == ship_port]
+            updated_ship_port_options = [{"label": i, "value": i} for i in
+                                         dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
+            updated_ship_name_options = [{"label": i, "value": i} for i in
+                                         dff.sort_values(['Ship name'])['Ship name'].unique()]
         else:
             dff = df[df['Ship status'] == ship_status]
             updated_ship_name_options = [{"label": i, "value": i} for i in
@@ -361,19 +390,21 @@ def update_drop_downs(ship_name, ship_status, ship_port):
             updated_ship_port_options = [{"label": i, "value": i} for i in
                                  dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
 
-        return [updated_ship_name_options, updated_ship_status_options, updated_ship_port_options]
+        #return [updated_ship_name_options, updated_ship_status_options, updated_ship_port_options]
 
     elif ship_port is not None:
-
-        updated_ship_port_options = [{"label": i, "value": i} for i in
-                             df.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
+        dff = df[df['Port of abandonment'] == ship_port]
+        updated_ship_port_options = [{"label": i, "value": i} for i in dff.sort_values(['Port of abandonment'])['Port of abandonment'].unique()]
 
         if ship_name is not None:
-            dff = df[df['Ship name'] == ship_name]
+            #dff = df[df['Ship name'] == ship_name]
+            dff = dff[dff['Ship status'] == ship_status]
             updated_ship_status_options = [{"label": i, "value": i} for i in
-                                   dff.sort_values(['Ship status'])['Ship status'].unique()]
+                                           dff.sort_values(['Ship status'])['Ship status'].unique()]
+        elif ship_status is not None:
+            updated_ship_status_options = [{"label": i, "value": i} for i in
+                                           dff.sort_values(['Ship status'])['Ship status'].unique()]
         else:
-            dff = df[df['Port of abandonment'] == ship_port]
             updated_ship_name_options = [{"label": i, "value": i} for i in
                                  dff.sort_values(['Ship name'])['Ship name'].unique()]
             updated_ship_status_options = [{"label": i, "value": i} for i in
