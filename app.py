@@ -196,7 +196,11 @@ app.layout = html.Div(
                 #table as DataTable.
                 html.Div(children=dash_table.DataTable(
                     id="table",
-                    columns = [{"name": i, "id": i} for i in df.columns],
+                    #columns = [{"name": i, "id": i} for i in df.columns],
+                    columns=[dict(name='Ship name', id='Ship name', type='text'),
+                             dict(name='ILO URL', id='ILO URL', type='text', presentation='markdown'),
+                             #dict(name='Vessel Finder URL', id='Vessel Finder Link', type='text', presentation='markdown'),
+                             ],
                     )
                 ),
             ],
@@ -288,6 +292,10 @@ def draw_graph(ship_name, ship_status, ship_port):
       ]
     )
 def draw_dash_datatable(ship_name, ship_status, ship_port):
+
+    def f(row):
+        return "[{0}]({0})".format(row['ILO URL'])
+
     if ship_name is None and ship_status is None and ship_port is None:
         dff = df
 
@@ -314,6 +322,10 @@ def draw_dash_datatable(ship_name, ship_status, ship_port):
             dff = dff[dff['Ship name'] == ship_name]
         elif ship_status is not None:
             dff = dff[dff['Ship status'] == ship_status]
+
+    #dff2 = dff[dff['IMO no.'], dff['ILO URL']]
+    dff['ILO URL'] = dff.apply(f, axis=1)
+    #dff['Vessel Finder Link'] = dff.apply(f, axis=1)
 
     table_data = dff.to_dict('records')
 
