@@ -1,11 +1,16 @@
 Useful links:
-https://www.simplifiedpython.net/how-to-add-code-to-github/
-https://dash.plotly.com/
-https://www.phillipsj.net/posts/creating-maps-with-dash/
-https://realpython.com/python-dash/
-https://towardsdatascience.com/build-an-interactive-choropleth-map-with-plotly-and-dash-1de0de00dce0
-https://dash.plotly.com/advanced-callbacks
-https://dash.plotly.com/datatable
+    https://www.simplifiedpython.net/how-to-add-code-to-github/
+    https://dash.plotly.com/
+    https://www.phillipsj.net/posts/creating-maps-with-dash/
+    https://realpython.com/python-dash/
+    https://towardsdatascience.com/build-an-interactive-choropleth-map-with-plotly-and-dash-1de0de00dce0
+    https://dash.plotly.com/advanced-callbacks
+
+Dynamic dash tables with URLS
+    https://dash.plotly.com/datatable
+    https://community.plotly.com/t/dash-v1-8-0-release-dcc-graph-updates-markdown-link-support-in-datatable-and-more/33629/5
+    https://community.plotly.com/t/dynamically-create-plotly-dash-table/15512/2
+    https://community.plotly.com/t/datatable-markdown-link-trouble/36458/2
 
 
 Latest Dictionary
