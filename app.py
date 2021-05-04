@@ -219,20 +219,23 @@ app.layout = html.Div(
                     sort_action="native",
                     sort_mode="multi",
                     style_table={'height': '500px', 'overflowY': 'auto'},
-                    style_header={'backgroundColor': 'white', 'fontWeight': 'bold', 'whiteSpace': 'normal', 'height':'auto'},
+                    style_header={'backgroundColor': 'white', 'fontWeight': 'bold', 'whiteSpace': 'normal', 'height':'auto', 'textAlign':
+                        'center'},
                     #style_data={'whiteSpace': 'normal', 'height':'auto'},
-                    style_cell={'textAlign': 'left', 'whiteSpace': 'normal', 'height':'auto'},
+                    style_cell={'textAlign': 'center', 'whiteSpace': 'normal', 'height':'auto'},
                     style_as_list_view=True,
                     #columns = [{"name": i, "id": i} for i in df.columns],
                     columns=[dict(name='Ship name', id='Ship name', type='text'),
                              dict(name='Ship status', id='Ship status', type='text'),
+                             #dict(name='Ship flag', id='Flag', type='text'),
                              dict(name='Port of abandonment', id='Port of abandonment', type='text'),
                              dict(name='No. abandoned seafarers', id='No. of Seafarers numeric', type='text'),
                              dict(name='Abandonment date', id='Abandonment date object', type='text'),
                              dict(name='ILO Website', id='ILO URL', type='text', presentation='markdown'),
                              dict(name='Vessel Finder Website', id='Vessel Finder Link', type='text', presentation='markdown'),
                              ],
-                    )
+                    ),
+                    className="card"
                 ),
             ],
             className="wrapper",
@@ -286,12 +289,14 @@ def draw_graph(ship_name, ship_status, ship_port):
         lon=dff['Port longitude'],
         hoverinfo="text",
     text='Ship name: ' + dff['Ship name'] + '<br>' +
-             'Ship flag: ' + dff['Flag'] + '<br>' +
-        'Ship status: ' + dff['Ship status'] + '<br>' +
+         'Ship status: ' + dff['Ship status'] + '<br>' +
+         #'Ship flag: ' + dff['Flag'] + '<br>' +
+         'Port of abandonment: ' + dff['Port of abandonment'] + '<br>' +
+         'Number of Seafarers: ' + dff['No. of Seafarers']+ '<br>' +
         #df['Vessel Finder Link'] + '<br>' +
-        'Abandonment date: ' + dff['Abandonment date']+ '<br>' +
-        'Port of abandonment: ' + dff['Port of abandonment'] + '<br>' +
-        'Number of Seafarers: ' + dff['No. of Seafarers'],
+         'Abandonment date: ' + dff['Abandonment date'],
+
+
         #'Circumstances: ' + df['Circumstances'],
         marker = dict(
             opacity = 0.7,
