@@ -21,17 +21,21 @@ for items in data:
 
     if items['Ship status'] == 'Inactive':
         items['line color'] = 'rgba' + str(colors.to_rgba('black'))
-        items['fill color'] = 'rgba' + str(colors.to_rgba('darkgray'))
+        #items['fill color'] = 'rgba' + str(colors.to_rgba('darkgray'))
+        items['fill color'] = 'rgba(187, 194, 226, 0.8)'
     elif items['Ship status'] == 'resolved':
         items['line color'] = 'rgba' + str(colors.to_rgba('black'))
-        items['fill color'] = 'rgba' + str(colors.to_rgba('lightgreen'))
+        #items['fill color'] = 'rgba' + str(colors.to_rgba('lightgreen'))
+        items['fill color'] = 'rgba(125, 206, 130, 0.8)'
     elif items['Ship status'] == 'disputed':
         items['line color'] = 'rgba' + str(colors.to_rgba('black'))
-        items['fill color'] = 'rgba' + str(colors.to_rgba('pink'))
+        #items['fill color'] = 'rgba' + str(colors.to_rgba('pink'))
+        items['fill color'] = 'rgba(222, 26, 26, 0.8)'
     else:
         items['Ship status'] = 'unknown'
         items['line color'] = 'rgba' + str(colors.to_rgba('black'))
-        items['fill color'] = 'rgba' + str(colors.to_rgba('yellow'))
+        #items['fill color'] = 'rgba' + str(colors.to_rgba('yellow'))
+        items['fill color'] = 'rgba(232, 226, 136, 0.8)'
 
 df = pd.DataFrame.from_dict(data)
 scaler = MinMaxScaler()
@@ -102,22 +106,23 @@ app.layout = html.Div(
     children=[
         html.Div(
             children=[
-                html.P(children="🚢",
-                       className="header-emoji"),
+                # html.P(children="🚢",
+                #        className="header-emoji"),
                 html.H1(
-                    children="Abandoned Seafarers",
+                    children="Reported Incidents of Abandoned Seafarers",
                     className="header-title"
                 ),
                 html.P(
-                    children="See where vessels and seafarers have been abandoned around the globe",
+                    #children="See where vessels and seafarers have been abandoned around the globe",
+                    children='The International Labor Organization (ILO) maintains a database that contains a regularly updated list of vessels that have been reported as abandoned in various ports of the world by appropriate organizations. It specifically includes information on seafarers and fishers, who have been abandoned and their current status. Moving beyond simply diplaying this data in a list or tabular format, plotting the information on a map can help engage the community to assist the abandoned seafarers as well as more easily identify data quality issues.',
                     className="header-description",
                 ),
                 html.A(
                     #id='link',
-                    children="Abandoned seafarers data recorded by the ILO",
+                    children="ILO Abandoned seafarers database",
                     href="https://www.ilo.org/dyn/seafarers/seafarersBrowse.list?p_lang=en",
                     target='_blank',
-                    className='link',
+                    className="link",
                 )
             ],
             className="header",
@@ -240,6 +245,14 @@ app.layout = html.Div(
             ],
             className="wrapper",
         ),
+        html.Div(
+            children = [html.P(
+                    children='Created by Dare Mighty Data Solutions, LLC',
+                    className="footer-description",
+                )
+
+            ]
+        )
     ]
 )
 
@@ -299,7 +312,7 @@ def draw_graph(ship_name, ship_status, ship_port):
 
         #'Circumstances: ' + df['Circumstances'],
         marker = dict(
-            opacity = 0.7,
+            #opacity = 0.7,
             symbol = 'circle',
             size = marker_size,
             color = dff['fill color'],
@@ -311,11 +324,19 @@ def draw_graph(ship_name, ship_status, ship_port):
         )
     )
 
-    fig.update_geos(projection_type = "natural earth")
+    fig.update_geos(
+        projection_type = "natural earth",
+        #showcoastlines=True, coastlinecolor="RebeccaPurple",
+        showcoastlines=True, coastlinecolor='rgba(10, 16, 13, 0.5)',
+        showland=True, landcolor="White",
+        #showocean=True, oceancolor="LightBlue",
+        showocean=True, oceancolor='rgba(185, 230, 255, 0.15)',
+        #showlakes=True, lakecolor="Blue",
+        #showrivers=True, rivercolor="Blue"
+    )
     fig.update_layout(
-    #title = 'Incidents of Abandoned Seafarers',
-    height=500,
-    margin={"r":0, "t":0, "l":0, "b":0}
+        height=500,
+        margin={"r":0, "t":0, "l":0, "b":0}
         )
 
     return fig

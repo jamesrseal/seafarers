@@ -22,13 +22,15 @@ body {
     font-weight: bold;
     text-align: center;
     margin: 0 auto;
+    padding: 16px 0 0 0;
 }
 
 .header-description {
     color: #CFCFCF;
     margin: 4px auto;
     text-align: center;
-    max-width: 384px;
+    max-width: 1000px;
+    padding: 12px 0 0 0;
 }
 
 .link {
@@ -36,6 +38,8 @@ body {
     margin: 4px auto;
     text-align: center;
     max-width: 384px;
+    display: block;
+    margin-block-start: 1em;
 }
 
 .wrapper {
@@ -78,6 +82,7 @@ body {
 
 .menu-title {
     margin-bottom: 6px;
+    width: 200px;
     font-weight: bold;
-    color: #00acf6;
+    color: #5D737E;
 }
