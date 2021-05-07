@@ -256,6 +256,10 @@ app.layout = html.Div(
                     href="https://github.com/jamesrseal/seafarers",
                     target='_blank',
                     className="link",
+                ),
+                html.P(
+                    children='Last updated 4/23/2021',
+                    className="link",
                 )
             ]
         )
