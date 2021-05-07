@@ -119,7 +119,7 @@ app.layout = html.Div(
                 ),
                 html.A(
                     #id='link',
-                    children="ILO Abandoned seafarers database",
+                    children="ILO Abandoned Seafarers Database",
                     href="https://www.ilo.org/dyn/seafarers/seafarersBrowse.list?p_lang=en",
                     target='_blank',
                     className="link",
@@ -246,15 +246,24 @@ app.layout = html.Div(
             className="wrapper",
         ),
         html.Div(
-            children = [html.P(
-                    children='Created by Dare Mighty Data Solutions, LLC',
-                    className="footer-description",
+            children = [
+                html.A(
+                    children='Created by Dare Mighty Data Solutions',
+                    href="http://daremightydata.com/",
+                    target='_blank',
+                    className="link",
+                ),
+                html.A(
+                    children='Project GitHub',
+                    href="https://github.com/jamesrseal/seafarers",
+                    target='_blank',
+                    className="link",
                 )
-
             ]
         )
     ]
 )
+
 
 @app.callback(
     Output('map', 'figure'),
@@ -331,8 +340,8 @@ def draw_graph(ship_name, ship_status, ship_port):
         showland=True, landcolor="White",
         #showocean=True, oceancolor="LightBlue",
         showocean=True, oceancolor='rgba(185, 230, 255, 0.15)',
-        #showlakes=True, lakecolor="Blue",
-        #showrivers=True, rivercolor="Blue"
+        showlakes=True, lakecolor='rgba(185, 230, 255, 0.15)',
+        showrivers=True, rivercolor='rgba(185, 230, 255, 0.3)'
     )
     fig.update_layout(
         height=500,
