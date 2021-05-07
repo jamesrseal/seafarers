@@ -16,9 +16,6 @@ data = [{'ILO URL': ' https://www.ilo.org/dyn/seafarers/seafarersbrowse.details?
 #basic data cleansing
 for items in data:
 
-
-
-
     if items['Ship status'] == 'Inactive':
         items['line color'] = 'rgba' + str(colors.to_rgba('black'))
         #items['fill color'] = 'rgba' + str(colors.to_rgba('darkgray'))
@@ -100,6 +97,7 @@ styles = {
 }
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
 app.title = 'Abandoned Seafarers'
 
 app.layout = html.Div(
