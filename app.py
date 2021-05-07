@@ -112,7 +112,7 @@ app.layout = html.Div(
                 ),
                 html.P(
                     #children="See where vessels and seafarers have been abandoned around the globe",
-                    children='The International Labor Organization (ILO) maintains a database that contains a regularly updated list of vessels that have been reported as abandoned in various ports of the world by appropriate organizations. It specifically includes information on seafarers and fishers, who have been abandoned and their current status. Moving beyond simply diplaying this data in a list or tabular format, plotting the information on a map can help engage the community to assist the abandoned seafarers as well as more easily identify data quality issues.',
+                    children='The International Labor Organization (ILO) maintains a database that contains a regularly updated list of vessels that have been reported as abandoned in various ports of the world by appropriate organizations. It specifically includes information on seafarers and fishers, who have been abandoned and their current status. Moving beyond simply displaying this data in a list or tabular format, plotting the information on a map can help engage the community to assist the abandoned seafarers as well as more easily identify data quality issues.',
                     className="header-description",
                 ),
                 html.A(
