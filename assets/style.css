@@ -7,7 +7,7 @@ body {
 .header {
     background-color: #222222;
     height: 288px;
-    padding: 16px 0 70px 0;
+    padding: 16px 0 0 0;
 }
 
 .header-emoji {
@@ -38,7 +38,7 @@ body {
     margin: 4px auto;
     text-align: center;
     max-width: 384px;
-    #display: block;
+    display: block;
     #margin-block-start: 1em;
 }
 
