@@ -103,6 +103,8 @@ app.title = 'Abandoned Seafarers'
 app.layout = html.Div(
     children=[
         html.Div(
+        children=[
+        html.Div(
             children=[
                 # html.P(children="🚢",
                 #        className="header-emoji"),
@@ -185,6 +187,9 @@ app.layout = html.Div(
             ],
             className="menu",
         ),
+        ],
+            className="container"
+        ),
         html.Div(
             children=[
                 html.Div(
@@ -261,7 +266,7 @@ app.layout = html.Div(
                     children='Last updated 4/23/2021',
                     className="link",
                 )
-            ]
+            ],
         )
     ]
 )
