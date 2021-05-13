@@ -34,6 +34,6 @@ In addition to the documentation and tutorials provided by Dash I found this art
 In the future I may explore scheduling seafarers_scrape2.py to automatically scrape the ILO database so as new ships are added my dashboard is always current.
 
 ## Conclusion & Contact
-In the end this was a fun that allowed me to learn more about Dash and heroku and plan. I plan on using these skills in the future for other interactive dashboard projects.
+In the end this was a fun project that allowed me to learn more about Dash and heroku and plan. I plan on using these skills in the future for other interactive dashboard projects.
 
 If you'd like to learn more about me or my company, Dare Mighty Data Solutions, please visit my [website](www.daremightydata.com) or contact me via [email](james@daremightydata.com).
