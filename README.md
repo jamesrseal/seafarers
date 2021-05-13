@@ -36,4 +36,4 @@ In the future I may explore scheduling seafarers_scrape2.py to automatically scr
 ## Conclusion & Contact
 In the end this was a fun project that allowed me to learn more about Dash and heroku and plan. I plan on using these skills in the future for other interactive dashboard projects.
 
-If you'd like to learn more about me or my company, Dare Mighty Data Solutions, please visit my [website](www.daremightydata.com) or contact me via [email](james@daremightydata.com).
+If you'd like to learn more about me or my company, Dare Mighty Data Solutions, please visit my [website](www.daremightydata.com) or contact me via [email](mailto:james@daremightydata.com?subject=Hello).
