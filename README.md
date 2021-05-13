@@ -19,7 +19,7 @@ The ILO database doesn't contain specific latitude and longitude coordinates abo
 
 Finally, the ILO database also lists the ship's [IMO number](https://en.wikipedia.org/wiki/IMO_number). Plugging a ship's IMO number into [Vessel Finder](https://www.vesselfinder.com/vessels) provides additional information about a ship at any given moment. For each ship in the ILO database I also get the Vessel Finder link for that specific ship.
 
-### [cleand_ports_list.csv](https://github.com/jamesrseal/seafarers/blob/master/cleand_ports_list.csv)
+### [cleand_ports_list.csv](https://github.com/jamesrseal/seafarers/blob/master/cleaned_ports_list.csv)
 For some ports listed in the ILO database the Nominatim package cannot find the specific location or returns incorrect lat/lon coordinates. For those ports with missing or incorrect lat/lon coordinates I manually found the correct lat/lon coordinates and included them in a .csv file which is used in conjunction with the following script.
 
 ### [clean_data.py](https://github.com/jamesrseal/seafarers/blob/master/clean_data.py)
