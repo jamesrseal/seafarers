@@ -12,20 +12,20 @@ As mentioned in the articles, the [ILO](https://www.ilo.org/dyn/seafarers/seafar
 ## How to use the scripts
 Below are a list of the main scripts I used to create this dashboard
 
-### [seafarers_scrape2.py](seafarers/seafarers_scrape2.py)
+### [seafarers_scrape2.py](https://github.com/jamesrseal/seafarers/blob/master/seafarers_scrape2.py)
 Using the great web scraping library [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) I scraped the ILO website and put the information into a python dictionary. Currently, if I want to get the latest data I need to manually run this script. In the future I'm interested in scheduling this but want to understand the load it will put on the ILO database.
 
 The ILO database doesn't contain specific latitude and longitude coordinates about where the ships were abandoned but it does list the port of abandonment. We'll need this information if we want to plot the ships on a map. I'm using the [Nominatim package](https://wiki.openstreetmap.org/wiki/Nominatim) that's part of OpenStreetMap in conjunction with the ILO port of abandonment to generate lat/lon coordinates for all of the ships in the ILO database.
 
 Finally, the ILO database also lists the ship's [IMO number](https://en.wikipedia.org/wiki/IMO_number). Plugging a ship's IMO number into [Vessel Finder](https://www.vesselfinder.com/vessels) provides additional information about a ship at any given moment. For each ship in the ILO database I also get the Vessel Finder link for that specific ship.
 
-### [cleand_ports_list.csv](seafarers/cleand_ports_list.csv)
+### [cleand_ports_list.csv](https://github.com/jamesrseal/seafarers/blob/master/cleand_ports_list.csv)
 For some ports listed in the ILO database the Nominatim package cannot find the specific location or returns incorrect lat/lon coordinates. For those ports with missing or incorrect lat/lon coordinates I manually found the correct lat/lon coordinates and included them in a .csv file which is used in conjunction with the following script.
 
-### [clean_data.py](seafarers/clean_data.py)
+### [clean_data.py](https://github.com/jamesrseal/seafarers/blob/master/clean_data.py)
 This script takes the cleand_ports_list.csv file and updates the dictionary created by seafarers_scrape2.py to update or correct those ports with incorrect or missing lat/lon values.
 
-### [app.py](seafarers/app.py)
+### [app.py](https://github.com/jamesrseal/seafarers/blob/master/app.py)
 This is the package responsible for creating the [Abandoned Seafarers Dashboard](https://abandoned-seafarers.herokuapp.com/). As discussed, all of the data scraping and cleansing has been done in Python up to this point. Originally I planned to export this data and develop a dashboard in Tableau (which I have a lot of experience with) however I wanted to challenge myself and learn some new tools so I decided to create the dashboard in Python using [Dash](https://dash.plotly.com/).
 
 In addition to the documentation and tutorials provided by Dash I found this article from realpython.com to be very helpful in learning basic mechanics to setting up a dashboard (https://realpython.com/python-dash/). The article not only provides a good tutorial on the python code, it also provides a .css template that I leveraged and also explains how to deploy the dash app using [heroku](https://www.heroku.com/).
