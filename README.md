@@ -1,7 +1,7 @@
 # Abandoned Seafarers
 
 ## Introduction
-Hi, my name is James. I work as a digital consultant and run my own company, [Dare Mighty Data Solutions](www.daremightydata.com). At Dare Mighty Data our ethos is that we seek to help companies in their digital transformation process by enabling them to use all of the tools and technologies at their disposal to the maximum effect. 
+Hi, my name is James. I work as a digital consultant and run my own company, [Dare Mighty Data Solutions](www.daremightydata.com). At Dare Mighty Data our ethos is that we seek to help companies in their digital transformation process by enabling them to use all of the tools and technologies at their disposal to maximum effect. 
 
 This project spawned from an idea I had after reading a blog post on [Jalopnik](https://jalopnik.com/crew-of-ever-given-really-dont-want-to-spend-years-stuc-1846730643) and the quoted [Guardian](https://www.theguardian.com/environment/2021/apr/19/ever-given-crew-fear-joining-ranks-of-seafarers-stranded-on-ships-for-years) article.
 
