@@ -13,7 +13,7 @@ As mentioned in the articles, the [ILO](https://www.ilo.org/dyn/seafarers/seafar
 Below are a list of the main scripts I used to create this dashboard
 
 ### seafarers_scrape2.py
-Using the great web scraping library [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) I scraped the ILO Seafarers Database website and put the information into a python dictonary. Currently, if I want to get the lastest data I need to manually run this script. In the future I'm interested in scheduling this but want to understand the load it will put on the ILO database.
+Using the great web scraping library [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) I scraped the ILO website and put the information into a python dictonary. Currently, if I want to get the lastest data I need to manually run this script. In the future I'm interested in scheduling this but want to understand the load it will put on the ILO database.
 
 The ILO database doesn't contain specific latitude and longitude coordinates about where the ships were abandoned but it does list the port of abandonment. We'll need this information if we want to plot the ships on a map. I'm using the [Nominatim package](https://wiki.openstreetmap.org/wiki/Nominatim) that's part of OpenStreetMap in conjunction with the ILO port of abandonment to generate lat/lon coordinates for all of the ships in the ILO database.
 
@@ -34,6 +34,6 @@ In addition to the documentation and tutorials provided by Dash I found this art
 In the future I may explore scheduling seafarers_scrape2.py to automatically scrape the ILO database so as new ships are added my dashboard is always current.
 
 ## Conclusion & Contact
-In the end this was a fun project that I was able to knock out fairly quickly. I enjoyed learning more about Dash and heroku and plan on using these skills in the future for other interactive dashboard projects.
+In the end this was a fun that allowed me to learn more about Dash and heroku and plan. I plan on using these skills in the future for other interactive dashboard projects.
 
 If you'd like to learn more about me or my company, Dare Mighty Data Solutions, please visit my [website](www.daremightydata.com) or contact me via [email](james@daremightydata.com).
