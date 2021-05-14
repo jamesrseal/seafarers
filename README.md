@@ -30,7 +30,7 @@ This script takes the cleand_ports_list.csv file and updates the dictionary crea
 ### [app.py](https://github.com/jamesrseal/seafarers/blob/master/app.py)
 This is the package responsible for creating the [Abandoned Seafarers Dashboard](https://abandoned-seafarers.herokuapp.com/). As discussed, all of the data scraping and cleansing has been done in Python up to this point. Originally I planned to export this data and develop a dashboard in Tableau (which I have a lot of experience with) however I wanted to challenge myself and learn some new tools so I decided to create the dashboard in Python using [Dash](https://dash.plotly.com/).
 
-In addition to the documentation and tutorials provided by Dash I found this article from realpython.com to be very helpful in learning basic mechanics to setting up a dashboard (https://realpython.com/python-dash/). The article not only provides a good tutorial on the python code, it also provides a .css template that I leveraged and also explains how to deploy the dash app using [heroku](https://www.heroku.com/).
+In addition to the documentation and tutorials provided by Dash I found this article from [realpython.com](https://realpython.com/python-dash/) to be very helpful in learning basic mechanics to setting up a dashboard. The article not only provides a good tutorial on the python code, it also provides a .css template that I leveraged and also explains how to deploy the dash app using [heroku](https://www.heroku.com/).
 
 ## Future Steps
 In the future I may explore scheduling seafarers_scrape2.py to automatically scrape the ILO database so as new ships are added my dashboard is always current.
