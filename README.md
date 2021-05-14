@@ -5,7 +5,7 @@ Hi, my name is James. I work as a digital consultant and run my own company, [Da
 
 This project spawned from an idea I had after reading a blog post on [Jalopnik](https://jalopnik.com/crew-of-ever-given-really-dont-want-to-spend-years-stuc-1846730643) and the quoted [Guardian](https://www.theguardian.com/environment/2021/apr/19/ever-given-crew-fear-joining-ranks-of-seafarers-stranded-on-ships-for-years) article.
 
-As mentioned in the articles, the [ILO](https://www.ilo.org/dyn/seafarers/seafarersBrowse.list?p_lang=en) maintains a database of cases of abandoned seafarers. I got sucked into reading and learning about all of the different abandoned seafarers and ships around the world but I felt like the presentation of the information was lacking. Wouldn't it be neat to have a dashboard that showed where all of the ships were across the globe and their status according to the ILO. With that thought in mind I set out to make that dashboard.
+As mentioned in the articles, the [ILO](https://www.ilo.org/dyn/seafarers/seafarersBrowse.list?p_lang=en) maintains a database of cases of abandoned seafarers. I got sucked into reading and learning about all of the different abandoned seafarers and ships around the world but I felt like the presentation of the information was lacking. Wouldn't it be neat to have a dashboard that showed where all of the ships were abandoned across the globe and their corresponding status according to the ILO. With that thought in mind I set out to make that dashboard.
  
 [Abandoned Seafarers Dashboard](https://abandoned-seafarers.herokuapp.com/)
  
