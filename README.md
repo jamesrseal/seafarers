@@ -22,6 +22,8 @@ Finally, the ILO database also lists the ship's [IMO number](https://en.wikipedi
 ### [cleand_ports_list.csv](https://github.com/jamesrseal/seafarers/blob/master/cleaned_ports_list.csv)
 For some ports listed in the ILO database the Nominatim package cannot find the specific location or returns incorrect lat/lon coordinates. For those ports with missing or incorrect lat/lon coordinates I manually found the correct lat/lon coordinates and included them in a .csv file which is used in conjunction with the following script.
 
+Note, while the file extension is .csv the columns are actuall sepeated by a ~(tilde). This is because some port names already included a comma so a tilde is used to avoid parsing issues when calling pd.read_csv
+
 ### [clean_data.py](https://github.com/jamesrseal/seafarers/blob/master/clean_data.py)
 This script takes the cleand_ports_list.csv file and updates the dictionary created by seafarers_scrape2.py to update or correct those ports with incorrect or missing lat/lon values.
 
