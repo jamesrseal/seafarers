@@ -1,7 +1,7 @@
 # Abandoned Seafarers
 
 ## Introduction
-Hi, my name is James. I work as a digital consultant and run my own company, [Dare Mighty Data Solutions](www.daremightydata.com). At Dare Mighty Data Solutions our ethos is that we seek to help companies in their digital transformation process by enabling them to use all the tools and technologies at their disposal to maximum effect. 
+Hi, my name is James. I work as a digital consultant and run my own company, [Dare Mighty Data Solutions](https://www.daremightydata.com/). At Dare Mighty Data Solutions our ethos is that we seek to help companies in their digital transformation process by enabling them to use all the tools and technologies at their disposal to maximum effect. 
 
 This project spawned from an idea I had after reading a blog post on [Jalopnik](https://jalopnik.com/crew-of-ever-given-really-dont-want-to-spend-years-stuc-1846730643) and the quoted [Guardian](https://www.theguardian.com/environment/2021/apr/19/ever-given-crew-fear-joining-ranks-of-seafarers-stranded-on-ships-for-years) article.
 
@@ -38,5 +38,4 @@ In the future I may explore scheduling seafarers_scrape2.py to automatically scr
 ## Conclusion & Contact
 In the end this was a fun project that allowed me to learn more about Dash and heroku and plan. I plan on using these skills in the future for other interactive dashboard projects.
 
-If you'd like to learn more about me or my company, Dare Mighty Data Solutions, please visit my [website](www.daremightydata.com) or contact me via [email](mailto:james@daremightydata.com).
-
+If you'd like to learn more about me or my company, Dare Mighty Data Solutions, please visit my [website](https://www.daremightydata.com/) or contact me via [email](mailto:james@daremightydata.com).
