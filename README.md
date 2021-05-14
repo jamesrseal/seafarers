@@ -9,8 +9,8 @@ As mentioned in the articles, the [ILO](https://www.ilo.org/dyn/seafarers/seafar
  
 [Abandoned Seafarers Dashboard](https://abandoned-seafarers.herokuapp.com/)
  
-## How to use the scripts
-Below are a list of the main scripts I used to create this dashboard
+## About the Code
+Below are a list of the main scripts I wrote to create this dashboard
 
 ### [seafarers_scrape2.py](https://github.com/jamesrseal/seafarers/blob/master/seafarers_scrape2.py)
 Using the great web scraping library [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) I scraped the ILO website and put the information into a python dictionary. Currently, if I want to get the latest data I need to manually run this script. In the future I'm interested in scheduling this but want to understand the load it will put on the ILO database.
