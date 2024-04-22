@@ -7,7 +7,7 @@ This project spawned from an idea I had after reading a blog post on [Jalopnik](
 
 As mentioned in the articles, the [ILO](https://www.ilo.org/dyn/seafarers/seafarersBrowse.list?p_lang=en) maintains a database of cases of abandoned seafarers. I got sucked into reading and learning about all of the different abandoned seafarers and ships around the world but I felt like the presentation of the information was lacking. Wouldn't it be neat to have a dashboard that showed where all of the ships were abandoned across the globe and their corresponding status according to the ILO. With that thought in mind I set out to make that dashboard.
  
-[Abandoned Seafarers Dashboard](https://abandoned-seafarers.herokuapp.com/)
+[Abandoned Seafarers Dashboard]([https://abandoned-seafarers.herokuapp.com/](https://jamesrseal.pythonanywhere.com/))
  
 ## About the Code
 Below are a list of the main scripts I wrote to create this dashboard
