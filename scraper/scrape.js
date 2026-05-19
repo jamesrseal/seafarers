@@ -34,13 +34,13 @@ const API_URL     = getArg('--api', 'http://localhost:3001');
 const CONCURRENCY = parseInt(getArg('--concurrency', '3'), 10);
 
 const BASE_URL = 'https://wwwex.ilo.org/dyn/r/abandonment/seafarers/details';
-const REPO_ROOT = path.join(__dirname, '..');
+
 
 // ---------------------------------------------------------------------------
 // Support data loaders
 // ---------------------------------------------------------------------------
 function loadPortOverrides() {
-  const csv = path.join(REPO_ROOT, 'cleaned_ports_list.csv');
+  const csv = path.join(__dirname, 'cleaned_ports_list.csv');
   if (!fs.existsSync(csv)) return {};
   const lines = fs.readFileSync(csv, 'utf8').split('\n');
   const overrides = {};
@@ -55,7 +55,7 @@ function loadPortOverrides() {
 }
 
 function loadFlagUrls() {
-  const csv = path.join(REPO_ROOT, 'flag_urls.csv');
+  const csv = path.join(__dirname, 'flag_urls.csv');
   if (!fs.existsSync(csv)) return {};
   const lines = fs.readFileSync(csv, 'utf8').split('\n');
   if (lines.length < 2) return {};
