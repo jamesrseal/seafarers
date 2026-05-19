@@ -1,41 +1,62 @@
-# Abandoned Seafarers
+# Abandoned Seafarers Dashboard
 
-## Introduction
-Hi, my name is James. I work as a digital consultant and run my own company, [Dare Mighty Data Solutions](https://www.daremightydata.com/). At Dare Mighty Data Solutions our ethos is that we seek to help companies in their digital transformation process by enabling them to use all the tools and technologies at their disposal to maximum effect. 
+Interactive map and table of abandoned seafarer cases from the [ILO database](https://wwwex.ilo.org/dyn/r/abandonment/seafarers/search).
 
-This project spawned from an idea I had after reading a blog post on [Jalopnik](https://jalopnik.com/crew-of-ever-given-really-dont-want-to-spend-years-stuc-1846730643) and the quoted [Guardian](https://www.theguardian.com/environment/2021/apr/19/ever-given-crew-fear-joining-ranks-of-seafarers-stranded-on-ships-for-years) article.
+This project started after reading about the [Ever Given crew](https://jalopnik.com/crew-of-ever-given-really-dont-want-to-spend-years-stuc-1846730643) and wanting a better way to visualize the ILO's abandonment case data. The original Python/Dash version has been rebuilt as a React + Node.js app with a SQLite database that stores scrape history so changes can be tracked over time.
 
-As mentioned in the articles, the [ILO](https://www.ilo.org/dyn/seafarers/seafarersBrowse.list?p_lang=en) maintains a database of cases of abandoned seafarers. I got sucked into reading and learning about all of the different abandoned seafarers and ships around the world but I felt like the presentation of the information was lacking. Wouldn't it be neat to have a dashboard that showed where all of the ships were abandoned across the globe and their corresponding status according to the ILO. With that thought in mind I set out to make that dashboard.
- 
-[Abandoned Seafarers Dashboard](https://jamesrseal.pythonanywhere.com/)
- 
-## About the Code
-Below are a list of the main scripts I wrote to create this dashboard
+## Setup
 
-### [seafarers_scrape2.py](https://github.com/jamesrseal/seafarers/blob/master/seafarers_scrape2.py)
-Using the great web scraping library [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) I scraped the ILO website and put the information into a python dictionary. Currently, if I want to get the latest data I need to manually run this script. In the future I'm interested in scheduling this but want to understand the load it will put on the ILO database.
+### 1. Backend
 
-The ILO database doesn't contain specific latitude and longitude coordinates about where the ships were abandoned but it does list the port of abandonment. We'll need this information if we want to plot the ships on a map. I'm using the [Nominatim package](https://wiki.openstreetmap.org/wiki/Nominatim) that's part of OpenStreetMap in conjunction with the ILO port of abandonment to generate lat/lon coordinates for all of the ships in the ILO database.
+```bash
+cd backend
+npm install
+npm start          # http://localhost:3001
+```
 
-Finally, the ILO database also lists the ship's [IMO number](https://en.wikipedia.org/wiki/IMO_number). Plugging a ship's IMO number into [Vessel Finder](https://www.vesselfinder.com/vessels) provides additional information about a ship at any given moment. For each ship in the ILO database I also get the Vessel Finder link for that specific ship.
+### 2. Frontend
 
-### [cleand_ports_list.csv](https://github.com/jamesrseal/seafarers/blob/master/cleaned_ports_list.csv)
-For some ports listed in the ILO database the Nominatim package cannot find the specific location or returns incorrect lat/lon coordinates. For those ports with missing or incorrect lat/lon coordinates I manually found the correct lat/lon coordinates and included them in a .csv file which is used in conjunction with the following script.
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
 
-Note, while the file extension is .csv the columns are actuall sepeated by a ~(tilde). This is because some port names already included a comma so a tilde is used to avoid parsing issues when calling pd.read_csv
+The frontend proxies all `/api/*` requests to the backend at port 3001.
 
-### [clean_data.py](https://github.com/jamesrseal/seafarers/blob/master/clean_data.py)
-This script takes the cleand_ports_list.csv file and updates the dictionary created by seafarers_scrape2.py to update or correct those ports with incorrect or missing lat/lon values.
+### 3. Scraper (populate the database)
 
-### [app.py](https://github.com/jamesrseal/seafarers/blob/master/app.py)
-This is the package responsible for creating the [Abandoned Seafarers Dashboard](https://jamesrseal.pythonanywhere.com/). As discussed, all of the data scraping and cleansing has been done in Python up to this point. Originally I planned to export this data and develop a dashboard in Tableau (which I have a lot of experience with) however I wanted to challenge myself and learn some new tools so I decided to create the dashboard in Python using [Dash](https://dash.plotly.com/).
+```bash
+cd scraper
+pip install -r requirements.txt
+playwright install chromium
+python scrape.py --start 1 --end 1700 --api http://localhost:3001
+```
 
-In addition to the documentation and tutorials provided by Dash I found this article from [realpython.com](https://realpython.com/python-dash/) to be very helpful in learning basic mechanics when developing a dashboard. The article not only provides a good tutorial on the python code, it also provides a .css template that I leveraged and also explains how to deploy the dash app using [pythonanywhere](https://www.pythonanywhere.com/).
+The scraper iterates ILO abandonment IDs 1–1700, renders each AJAX detail page with a headless browser, geocodes ports via OpenStreetMap Nominatim, and posts the batch to the backend. A full run takes roughly 45–60 minutes. Each run is stored with a timestamp so changes can be tracked over time.
 
-## Future Steps
-In the future I may explore scheduling seafarers_scrape2.py to automatically scrape the ILO database so as new ships are added my dashboard is always current.
+To scrape a small test batch first:
+```bash
+python scrape.py --start 1690 --end 1700 --api http://localhost:3001
+```
 
-## Conclusion & Contact
-In the end this was a fun project that allowed me to learn more about Dash and heroku. I plan on using these skills in the future for other interactive dashboard projects.
+## Production
 
-If you'd like to learn more about me or my company, Dare Mighty Data Solutions, please visit my [website](https://www.daremightydata.com/) or contact me via [email](mailto:james@daremightydata.com).
+```bash
+cd frontend && npm run build
+cd ../backend && npm start   # serves React build as static files on port 3001
+```
+
+## Project Structure
+
+```
+backend/   Node.js/Express API + SQLite
+frontend/  React + Vite + Tailwind CSS + Leaflet
+scraper/   Python + Playwright scraper
+```
+
+See `CLAUDE.md` for full architecture details and API reference.
+
+## Contact
+
+James Seal · [Dare Mighty Data Solutions](https://www.daremightydata.com/) · [james@daremightydata.com](mailto:james@daremightydata.com)

@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure Leaflet tiles render above nothing */
+.leaflet-container {
+  background: #a8c8e8;
+}
