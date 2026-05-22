@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { statusColor, statusLabel, markerRadius } from '../utils/statusColors';
 
-function FlyTo({ ship }) {
+function MapController({ ship, view }) {
   const map = useMap();
+  useEffect(() => { map.invalidateSize(); }, [view]);
   useEffect(() => {
     if (ship?.port_latitude && ship?.port_longitude) {
       map.flyTo([ship.port_latitude, ship.port_longitude], Math.max(map.getZoom(), 5), { duration: 1 });
@@ -12,7 +13,7 @@ function FlyTo({ ship }) {
   return null;
 }
 
-export default function Map({ ships, onSelect, highlighted }) {
+export default function Map({ ships, onSelect, highlighted, view }) {
   const mappable = ships.filter(s => s.port_latitude && s.port_longitude);
 
   return (
@@ -26,7 +27,7 @@ export default function Map({ ships, onSelect, highlighted }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FlyTo ship={highlighted} />
+      <MapController ship={highlighted} view={view} />
       {mappable.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id).map(ship => {
         const isHighlighted = !!highlighted;
         const { fill } = statusColor(ship.ship_status);

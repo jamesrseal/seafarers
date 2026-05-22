@@ -51,12 +51,16 @@ export default function App() {
         <div className={`flex-1 overflow-hidden flex ${view === 'table' ? 'flex-col' : 'flex-row'}`}>
           {view !== 'table' && (
             <div className={view === 'split' ? 'flex-1' : 'flex-1'}>
-              <Map ships={ships} onSelect={setSelectedShip} highlighted={highlightedShip} />
+              <Map ships={ships} onSelect={setSelectedShip} highlighted={highlightedShip} view={view} />
             </div>
           )}
           {view !== 'map' && (
             <div className={`${view === 'split' ? 'w-1/2 border-l border-gray-200' : 'flex-1'} overflow-hidden`}>
-              <ShipTable ships={ships} onSelect={setHighlightedShip} highlighted={highlightedShip} />
+              <ShipTable
+                ships={ships}
+                onSelect={(ship) => { setHighlightedShip(ship); if (ship) setView('split'); }}
+                highlighted={highlightedShip}
+              />
             </div>
           )}
         </div>
