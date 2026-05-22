@@ -23,6 +23,11 @@ export default function App() {
         setFilters={(f) => { setFilters(f); setHighlightedShip(null); }}
         options={filterOptions}
         total={ships.length}
+        onClearAll={() => {
+          setFilters({ status: '', flag: '', port: '', q: '' });
+          setHighlightedShip(null);
+          setSelectedShip(null);
+        }}
       />
 
       {/* View toggle */}

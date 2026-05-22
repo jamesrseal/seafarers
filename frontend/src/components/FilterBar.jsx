@@ -1,13 +1,7 @@
-export default function FilterBar({ filters, setFilters, options, total }) {
+export default function FilterBar({ filters, setFilters, options, total, onClearAll }) {
   function set(key) {
     return (e) => setFilters(f => ({ ...f, [key]: e.target.value }));
   }
-
-  function clear() {
-    setFilters({ status: '', flag: '', port: '', q: '' });
-  }
-
-  const hasFilter = filters.status || filters.flag || filters.port || filters.q;
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
@@ -53,14 +47,12 @@ export default function FilterBar({ filters, setFilters, options, total }) {
           ))}
         </select>
 
-        {hasFilter && (
-          <button
-            onClick={clear}
-            className="text-sm text-blue-600 hover:text-blue-800 underline"
-          >
-            Clear filters
-          </button>
-        )}
+        <button
+          onClick={onClearAll}
+          className="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+        >
+          Reset
+        </button>
 
         <span className="ml-auto text-sm text-gray-500">{total} records</span>
       </div>
