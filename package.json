@@ -3,5 +3,10 @@
   "version": "1.0.0",
   "engines": {
     "node": ">=18"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install",
+    "start": "bash start.sh"
   }
 }
+
