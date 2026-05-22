@@ -10,8 +10,12 @@ scraper/node_modules/
 # Build output
 frontend/dist/
 
-# SQLite database (data is re-populated by the scraper)
-backend/data/
+# SQLite database — tracked so Render has an initial seed on first deploy.
+# To update production data: run the scraper locally, then commit and push.
+!backend/data/
+backend/data/*.json
+backend/data/*.db-shm
+backend/data/*.db-wal
 
 # Playwright debug artifacts
 scraper/page_*.html

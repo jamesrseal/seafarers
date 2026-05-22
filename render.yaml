@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: seafarers
+    runtime: node
+    buildCommand: npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install
+    startCommand: bash start.sh
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /data/seafarers.db
+    disk:
+      name: seafarers-data
+      mountPath: /data
+      sizeGB: 1
