@@ -1,7 +1,18 @@
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
+import { useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { statusColor, statusLabel, markerRadius } from '../utils/statusColors';
 
-export default function Map({ ships, onSelect }) {
+function FlyTo({ ship }) {
+  const map = useMap();
+  useEffect(() => {
+    if (ship?.port_latitude && ship?.port_longitude) {
+      map.flyTo([ship.port_latitude, ship.port_longitude], Math.max(map.getZoom(), 5), { duration: 1 });
+    }
+  }, [ship]);
+  return null;
+}
+
+export default function Map({ ships, onSelect, highlighted }) {
   const mappable = ships.filter(s => s.port_latitude && s.port_longitude);
 
   return (
@@ -15,15 +26,22 @@ export default function Map({ ships, onSelect }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {mappable.map(ship => {
+      <FlyTo ship={highlighted} />
+      {mappable.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id).map(ship => {
+        const isHighlighted = !!highlighted;
         const { fill } = statusColor(ship.ship_status);
         const r = markerRadius(ship.num_seafarers);
         return (
           <CircleMarker
             key={ship.abandonment_id}
             center={[ship.port_latitude, ship.port_longitude]}
-            radius={r}
-            pathOptions={{ fillColor: fill, fillOpacity: 0.8, color: '#333', weight: 0.5 }}
+            radius={isHighlighted ? r + 5 : r}
+            pathOptions={{
+              fillColor: fill,
+              fillOpacity: isHighlighted ? 1 : 0.8,
+              color: isHighlighted ? '#fff' : '#333',
+              weight: isHighlighted ? 2.5 : 0.5,
+            }}
             eventHandlers={{ click: () => onSelect(ship) }}
           >
             <Tooltip>

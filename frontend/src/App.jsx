@@ -8,7 +8,8 @@ import { useShips, useFilters } from './hooks/useShips';
 
 export default function App() {
   const [filters, setFilters] = useState({ status: '', flag: '', port: '', q: '' });
-  const [selectedShip, setSelectedShip] = useState(null);
+  const [selectedShip, setSelectedShip] = useState(null);   // modal (map marker click)
+  const [highlightedShip, setHighlightedShip] = useState(null); // map highlight (table row click)
   const [view, setView] = useState('map'); // 'map' | 'table' | 'split'
 
   const { ships, loading } = useShips(filters);
@@ -19,7 +20,7 @@ export default function App() {
       <Header />
       <FilterBar
         filters={filters}
-        setFilters={setFilters}
+        setFilters={(f) => { setFilters(f); setHighlightedShip(null); }}
         options={filterOptions}
         total={ships.length}
       />
@@ -45,12 +46,12 @@ export default function App() {
         <div className={`flex-1 overflow-hidden flex ${view === 'table' ? 'flex-col' : 'flex-row'}`}>
           {view !== 'table' && (
             <div className={view === 'split' ? 'flex-1' : 'flex-1'}>
-              <Map ships={ships} onSelect={setSelectedShip} />
+              <Map ships={ships} onSelect={setSelectedShip} highlighted={highlightedShip} />
             </div>
           )}
           {view !== 'map' && (
             <div className={`${view === 'split' ? 'w-1/2 border-l border-gray-200' : 'flex-1'} overflow-hidden`}>
-              <ShipTable ships={ships} onSelect={setSelectedShip} />
+              <ShipTable ships={ships} onSelect={setHighlightedShip} highlighted={highlightedShip} />
             </div>
           )}
         </div>

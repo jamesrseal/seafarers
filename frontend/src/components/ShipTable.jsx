@@ -42,7 +42,7 @@ const COLUMNS = [
 
 const PAGE_SIZE = 50;
 
-export default function ShipTable({ ships, onSelect }) {
+export default function ShipTable({ ships, onSelect, highlighted }) {
   const [sorting, setSorting] = useState([{ id: 'abandonment_date', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
   const columns = useMemo(() => COLUMNS, []);
@@ -79,11 +79,13 @@ export default function ShipTable({ ships, onSelect }) {
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row, i) => (
+          {table.getRowModel().rows.map((row, i) => {
+            const isHighlighted = highlighted?.abandonment_id === row.original.abandonment_id;
+            return (
             <tr
               key={row.id}
-              onClick={() => onSelect(row.original)}
-              className={`cursor-pointer hover:bg-blue-50 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+              onClick={() => onSelect(isHighlighted ? null : row.original)}
+              className={`cursor-pointer hover:bg-blue-50 ${isHighlighted ? 'bg-blue-100 font-medium' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
             >
               {row.getVisibleCells().map(cell => (
                 <td key={cell.id} className="px-3 py-2 border-b border-gray-100 whitespace-nowrap max-w-[200px] truncate">
@@ -91,7 +93,8 @@ export default function ShipTable({ ships, onSelect }) {
                 </td>
               ))}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
       {ships.length === 0 && (
