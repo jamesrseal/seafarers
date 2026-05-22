@@ -1,15 +1,5 @@
-Useful links:
-    https://realpython.com/python-dash/#add-interactivity-to-your-dash-apps-using-callbacks
-    https://towardsdatascience.com/build-an-interactive-choropleth-map-with-plotly-and-dash-1de0de00dce0
-    https://www.phillipsj.net/posts/creating-maps-with-dash/
-    https://www.simplifiedpython.net/how-to-add-code-to-github/
-    https://dash.plotly.com/
-    https://plotly.com/python/map-configuration/
-    https://realpython.com/python-dash/
-    https://dash.plotly.com/advanced-callbacks
+Resolved, ILO 1036, ours 1032 (missing 4)
+Disputed, ILO 295, ours 293 (missing 2)
+Unresolved, ILO 195, ours 188 (missing 7)
+Inactive, ILO 149, ours 147 (missing 2)
 
-Dynamic dash tables with URLS
-    https://dash.plotly.com/datatable
-    https://community.plotly.com/t/dash-v1-8-0-release-dcc-graph-updates-markdown-link-support-in-datatable-and-more/33629/5
-    https://community.plotly.com/t/dynamically-create-plotly-dash-table/15512/2
-    https://community.plotly.com/t/datatable-markdown-link-trouble/36458/2
