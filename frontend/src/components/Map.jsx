@@ -1,5 +1,5 @@
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
-import { statusColor, markerRadius } from '../utils/statusColors';
+import { statusColor, statusLabel, markerRadius } from '../utils/statusColors';
 
 export default function Map({ ships, onSelect }) {
   const mappable = ships.filter(s => s.port_latitude && s.port_longitude);
@@ -30,7 +30,7 @@ export default function Map({ ships, onSelect }) {
               <div className="text-xs leading-snug">
                 <div className="font-bold">{ship.ship_name}</div>
                 <div>{ship.port_of_abandonment}</div>
-                <div>{ship.num_seafarers} seafarers · {ship.ship_status || 'Active'}</div>
+                <div>{ship.num_seafarers} seafarers · {statusLabel(ship.ship_status)}</div>
               </div>
             </Tooltip>
           </CircleMarker>

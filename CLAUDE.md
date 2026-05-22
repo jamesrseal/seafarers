@@ -31,9 +31,14 @@ Runs on port 5173.
 ### Scraper
 ```bash
 cd scraper
-pip install -r requirements.txt
-playwright install chromium
-python scrape.py --start 1 --end 1700 --api http://localhost:3001
+npm install
+npx playwright install chromium
+
+# Full scrape (range scan + auto-extend beyond END until 30 consecutive empty pages)
+node scrape.js --start 1 --end 1705 --api http://localhost:3001 --concurrency 5
+
+# Re-scrape all Unresolved + Disputed records to pick up status changes
+node scrape.js --rescan-open --api http://localhost:3001 --concurrency 5
 ```
 
 ## Architecture

@@ -1,4 +1,4 @@
-import { statusColor } from '../utils/statusColors';
+import { statusColor, statusLabel } from '../utils/statusColors';
 
 export default function ShipDetail({ ship, onClose }) {
   if (!ship) return null;
@@ -14,7 +14,7 @@ export default function ShipDetail({ ship, onClose }) {
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{ship.ship_name}</h2>
             <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${badge}`}>
-              {ship.ship_status || 'Active'}
+              {statusLabel(ship.ship_status)}
             </span>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>

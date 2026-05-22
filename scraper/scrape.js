@@ -2,12 +2,20 @@
 /**
  * ILO Abandoned Seafarers scraper (Node.js + Playwright)
  *
- * The ILO site is an Oracle APEX application with predictable hidden input
- * field IDs (P3_SHIP_NAME, P3_PORT, etc.). We read values directly from the
- * DOM rather than parsing raw HTML.
- *
  * Usage:
- *   node scrape.js [--start 1] [--end 1700] [--api http://localhost:3001] [--concurrency 3]
+ *   node scrape.js [--start 1] [--end 1705] [--api http://localhost:3001] [--concurrency 5]
+ *   node scrape.js --rescan-open [--api http://localhost:3001] [--concurrency 5]
+ *
+ * Modes:
+ *   Default       Range scan from START to END, then auto-extends beyond END until
+ *                 EMPTY_STREAK_LIMIT consecutive empty pages — catches newly added records
+ *                 without needing to update --end manually.
+ *   --rescan-open Re-scrapes every Unresolved and Disputed record already in the DB to
+ *                 pick up status changes. Run periodically alongside the default scan.
+ *
+ * Robustness:
+ *   Each page is retried up to MAX_RETRIES times with exponential backoff before
+ *                 being skipped, preventing transient network errors from causing gaps.
  *
  * First run:
  *   npm install
@@ -16,9 +24,9 @@
 
 const { chromium } = require('playwright');
 const https = require('https');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+const http  = require('http');
+const fs    = require('fs');
+const path  = require('path');
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -28,13 +36,19 @@ function getArg(flag, fallback) {
   const i = args.indexOf(flag);
   return i !== -1 && args[i + 1] ? args[i + 1] : fallback;
 }
-const START       = parseInt(getArg('--start', '1'), 10);
-const END         = parseInt(getArg('--end', '1700'), 10);
-const API_URL     = getArg('--api', 'http://localhost:3001');
-const CONCURRENCY = parseInt(getArg('--concurrency', '3'), 10);
+function hasFlag(flag) { return args.includes(flag); }
+
+const RESCAN_OPEN  = hasFlag('--rescan-open');
+const START        = parseInt(getArg('--start', '1'), 10);
+const END          = parseInt(getArg('--end', '1705'), 10);
+const API_URL      = getArg('--api', 'http://localhost:3001');
+const CONCURRENCY  = parseInt(getArg('--concurrency', '5'), 10);
+
+const MAX_RETRIES        = 3;
+const RETRY_BASE_MS      = 3000;
+const EMPTY_STREAK_LIMIT = 30; // auto-extend stops after this many consecutive empty pages
 
 const BASE_URL = 'https://wwwex.ilo.org/dyn/r/abandonment/seafarers/details';
-
 
 // ---------------------------------------------------------------------------
 // Support data loaders
@@ -59,12 +73,12 @@ function loadFlagUrls() {
   if (!fs.existsSync(csv)) return {};
   const lines = fs.readFileSync(csv, 'utf8').split('\n');
   if (lines.length < 2) return {};
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const headers   = lines[0].split(',').map(h => h.trim().toLowerCase());
   const countryIdx = headers.findIndex(h => h === 'country');
   const urlIdx     = headers.findIndex(h => h.includes('url'));
   const flags = {};
   for (const line of lines.slice(1)) {
-    const cols = line.split(',');
+    const cols    = line.split(',');
     const country = cols[countryIdx]?.trim();
     const url     = cols[urlIdx]?.trim();
     if (country && url) flags[country] = url;
@@ -79,13 +93,12 @@ const geocache = new Map();
 
 async function geocode(port, overrides) {
   if (!port) return { lat: null, lon: null };
-  const override = overrides[port];
-  if (override) return override;
+  if (overrides[port]) return overrides[port];
   if (geocache.has(port)) return geocache.get(port);
 
   await sleep(1200);
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(port)}&format=json&limit=1`;
+    const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(port)}&format=json&limit=1`;
     const body = await fetchJson(url, { 'User-Agent': 'seafarers_scraper/2.0 (james@daremightydata.com)' });
     if (body && body.length > 0) {
       const result = { lat: parseFloat(body[0].lat), lon: parseFloat(body[0].lon) };
@@ -114,15 +127,15 @@ function fetchJson(url, extraHeaders = {}) {
 
 function postJson(url, payload) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify(payload);
+    const body   = JSON.stringify(payload);
     const parsed = new URL(url);
-    const mod = parsed.protocol === 'https:' ? https : http;
-    const req = mod.request({
+    const mod    = parsed.protocol === 'https:' ? https : http;
+    const req    = mod.request({
       hostname: parsed.hostname,
-      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-      path: parsed.pathname + parsed.search,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      port:     parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path:     parsed.pathname + parsed.search,
+      method:   'POST',
+      headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
     }, res => {
       let data = '';
       res.on('data', c => data += c);
@@ -140,7 +153,6 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 // Extract data directly from APEX DOM fields using Playwright evaluate
 // ---------------------------------------------------------------------------
 function extractApexFields() {
-  // Runs inside the browser context
   function val(id) {
     const el = document.getElementById(id);
     return el ? (el.value || '').trim() : null;
@@ -151,72 +163,154 @@ function extractApexFields() {
   }
 
   const shipName = val('P3_SHIP_NAME');
-  // Confirm this is a real record page — if the ship name field is absent or
-  // the page shows a "no data" indicator, skip it.
   if (!shipName) return null;
 
-  const flagRaw = val('P3_FLAG');  // clean country name (hidden input in header)
+  const flagRaw = val('P3_FLAG') || '';
   const imoRaw  = val('P3_IMO_NO') || '';
   const imo     = imoRaw.replace(/\D/g, '');
 
   return {
-    ship_name:            shipName,
-    ship_status:          val('P3_CASE_STATUS') || '',
-    flag:                 flagRaw || '',
-    imo_number:           imoRaw,
-    vessel_type:          val('P3_IMO_SHIP_TYPE') || '',
-    port_of_abandonment:  val('P3_PORT') || '',
-    abandonment_date:     val('P3_ABAND_DATE') || '',
-    notification_date:    val('P3_NOTIF_DATE') || '',
-    reporting_member:     val('P3_REPORTING') || '',
-    num_seafarers:        parseInt(val('P3_SEAFARERS_NUMBER') || '', 10) || null,
-    circumstances:        val('P3_CIRCUMSTANCES') || '',
-    // Comments live in a dynamic APEX region rendered as HTML
-    comments: txt('#R871520703199102648 a-dynamic-content') || '',
-    vessel_finder_url:    imo ? `https://www.vesselfinder.com/vessels?name=${imo}` : null,
+    ship_name:           shipName,
+    ship_status:         val('P3_CASE_STATUS') || '',
+    flag:                flagRaw,
+    imo_number:          imoRaw,
+    vessel_type:         val('P3_IMO_SHIP_TYPE') || '',
+    port_of_abandonment: val('P3_PORT') || '',
+    abandonment_date:    val('P3_ABAND_DATE') || '',
+    notification_date:   val('P3_NOTIF_DATE') || '',
+    reporting_member:    val('P3_REPORTING') || '',
+    num_seafarers:       parseInt(val('P3_SEAFARERS_NUMBER') || '', 10) || null,
+    circumstances:       val('P3_CIRCUMSTANCES') || '',
+    comments:            txt('#R871520703199102648 a-dynamic-content') || '',
+    vessel_finder_url:   imo ? `https://www.vesselfinder.com/vessels?name=${imo}` : null,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Scrape one page
+// Scrape one page — throws on network/timeout error, returns null for empty page
 // ---------------------------------------------------------------------------
 async function scrapeOne(page, id, portOverrides, flagUrls) {
   const url = `${BASE_URL}?p3_abandonment_id=${id}`;
-  try {
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
-    const fields = await page.evaluate(extractApexFields);
+  await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+  const fields = await page.evaluate(extractApexFields);
 
-    if (!fields) {
-      process.stdout.write('.');
-      return null;
+  if (!fields) return null;
+
+  const { lat, lon } = await geocode(fields.port_of_abandonment, portOverrides);
+
+  return {
+    abandonment_id:      String(id),
+    ilo_url:             `${BASE_URL}?p3_abandonment_id=${id}`,
+    ship_name:           fields.ship_name,
+    ship_status:         fields.ship_status,
+    flag:                fields.flag,
+    imo_number:          fields.imo_number,
+    port_of_abandonment: fields.port_of_abandonment,
+    port_latitude:       lat,
+    port_longitude:      lon,
+    abandonment_date:    fields.abandonment_date,
+    notification_date:   fields.notification_date,
+    reporting_member:    fields.reporting_member,
+    num_seafarers:       fields.num_seafarers,
+    circumstances:       fields.circumstances,
+    comments:            fields.comments,
+    fishing_vessel:      /fishing/i.test(fields.vessel_type) ? 1 : 0,
+    vessel_finder_url:   fields.vessel_finder_url,
+    flag_url:            flagUrls[fields.flag] || null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Scrape one ID with retries — always returns null on permanent failure
+// ---------------------------------------------------------------------------
+async function scrapeWithRetry(browser, id, portOverrides, flagUrls) {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const page = await browser.newPage();
+    try {
+      const result = await scrapeOne(page, id, portOverrides, flagUrls);
+      await page.close();
+      return result; // null = empty page (not an error)
+    } catch (e) {
+      await page.close();
+      if (attempt < MAX_RETRIES) {
+        const delay = RETRY_BASE_MS * attempt;
+        console.log(`  [${id}] attempt ${attempt}/${MAX_RETRIES} failed — retrying in ${delay / 1000}s (${e.message.split('\n')[0]})`);
+        await sleep(delay);
+      } else {
+        console.log(`  [${id}] FAILED after ${MAX_RETRIES} attempts — skipping`);
+      }
     }
-
-    const { lat, lon } = await geocode(fields.port_of_abandonment, portOverrides);
-
-    return {
-      abandonment_id:       String(id),
-      ilo_url:              `${BASE_URL}?p3_abandonment_id=${id}`,
-      ship_name:            fields.ship_name,
-      ship_status:          fields.ship_status,
-      flag:                 fields.flag,
-      imo_number:           fields.imo_number,
-      port_of_abandonment:  fields.port_of_abandonment,
-      port_latitude:        lat,
-      port_longitude:       lon,
-      abandonment_date:     fields.abandonment_date,
-      notification_date:    fields.notification_date,
-      reporting_member:     fields.reporting_member,
-      num_seafarers:        fields.num_seafarers,
-      circumstances:        fields.circumstances,
-      comments:             fields.comments,
-      fishing_vessel:       /fishing/i.test(fields.vessel_type) ? 1 : 0,
-      vessel_finder_url:    fields.vessel_finder_url,
-      flag_url:             flagUrls[fields.flag] || null,
-    };
-  } catch (e) {
-    console.log(`  [${id}] ERROR: ${e.message}`);
-    return null;
   }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Run batches over a list of IDs, logging hits and misses
+// ---------------------------------------------------------------------------
+async function runBatches(browser, ids, portOverrides, flagUrls) {
+  const records = [];
+  for (let i = 0; i < ids.length; i += CONCURRENCY) {
+    const batch   = ids.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(id => scrapeWithRetry(browser, id, portOverrides, flagUrls))
+    );
+    for (let j = 0; j < batch.length; j++) {
+      const r = results[j];
+      if (r) {
+        records.push(r);
+        console.log(`  [${r.abandonment_id}] ${r.ship_name} — ${r.port_of_abandonment}`);
+      } else {
+        process.stdout.write('.');
+      }
+    }
+    await sleep(500);
+  }
+  return records;
+}
+
+// ---------------------------------------------------------------------------
+// Auto-extend: probe IDs beyond END until EMPTY_STREAK_LIMIT consecutive misses
+// ---------------------------------------------------------------------------
+async function autoExtend(browser, fromId, portOverrides, flagUrls) {
+  console.log(`\nAuto-extending from ID ${fromId} (stops after ${EMPTY_STREAK_LIMIT} consecutive empty pages)…`);
+  const records = [];
+  let id           = fromId;
+  let emptyStreak  = 0;
+
+  while (emptyStreak < EMPTY_STREAK_LIMIT) {
+    const batch   = Array.from({ length: CONCURRENCY }, (_, i) => id + i);
+    const results = await Promise.all(
+      batch.map(bid => scrapeWithRetry(browser, bid, portOverrides, flagUrls))
+    );
+    for (let j = 0; j < batch.length; j++) {
+      const r = results[j];
+      if (r) {
+        records.push(r);
+        emptyStreak = 0;
+        console.log(`  [${r.abandonment_id}] ${r.ship_name} — ${r.port_of_abandonment}`);
+      } else {
+        emptyStreak++;
+        process.stdout.write('.');
+      }
+    }
+    id += CONCURRENCY;
+    await sleep(500);
+  }
+
+  console.log(`\nAuto-extend complete — ${records.length} new record(s) found.`);
+  return records;
+}
+
+// ---------------------------------------------------------------------------
+// Rescan-open mode: fetch Unresolved + Disputed IDs from the API, re-scrape
+// ---------------------------------------------------------------------------
+async function getOpenIds() {
+  const [unresolved, disputed] = await Promise.all([
+    fetchJson(`${API_URL}/api/ships?status=Unresolved`),
+    fetchJson(`${API_URL}/api/ships?status=Disputed`),
+  ]);
+  const ids = [...unresolved, ...disputed].map(s => parseInt(s.abandonment_id, 10));
+  return [...new Set(ids)].sort((a, b) => a - b);
 }
 
 // ---------------------------------------------------------------------------
@@ -227,37 +321,27 @@ async function main() {
   const flagUrls      = loadFlagUrls();
   const scrapedAt     = new Date().toISOString();
 
-  console.log(`Seafarers scraper — IDs ${START}–${END} | concurrency=${CONCURRENCY}`);
-  console.log(`scraped_at: ${scrapedAt}\n`);
-
   const browser = await chromium.launch({ headless: true });
-  const records  = [];
-  const ids      = Array.from({ length: END - START + 1 }, (_, i) => START + i);
+  let records   = [];
 
-  for (let i = 0; i < ids.length; i += CONCURRENCY) {
-    const batch = ids.slice(i, i + CONCURRENCY);
-    const pages = await Promise.all(batch.map(() => browser.newPage()));
-
-    const results = await Promise.all(
-      batch.map((id, j) => scrapeOne(pages[j], id, portOverrides, flagUrls))
-    );
-
-    for (const page of pages) await page.close();
-
-    for (const r of results) {
-      if (r && r.ship_name) {
-        records.push(r);
-        console.log(`  [${r.abandonment_id}] ${r.ship_name} — ${r.port_of_abandonment}`);
-      }
-    }
-
-    await sleep(500);
+  if (RESCAN_OPEN) {
+    console.log('Mode: rescan-open — re-scraping all Unresolved and Disputed records');
+    console.log(`scraped_at: ${scrapedAt}\n`);
+    const ids = await getOpenIds();
+    console.log(`Fetched ${ids.length} open IDs from API\n`);
+    records = await runBatches(browser, ids, portOverrides, flagUrls);
+  } else {
+    console.log(`Mode: range scan — IDs ${START}–${END} + auto-extend | concurrency=${CONCURRENCY}`);
+    console.log(`scraped_at: ${scrapedAt}\n`);
+    const ids = Array.from({ length: END - START + 1 }, (_, i) => START + i);
+    records = await runBatches(browser, ids, portOverrides, flagUrls);
+    const extended = await autoExtend(browser, END + 1, portOverrides, flagUrls);
+    records.push(...extended);
   }
 
   await browser.close();
 
   console.log(`\nScraped ${records.length} records. Posting to ${API_URL}/api/scrapes/ingest …`);
-
   try {
     const res = await postJson(`${API_URL}/api/scrapes/ingest`, { scraped_at: scrapedAt, ships: records });
     console.log(`Ingest response (${res.status}):`, res.body);

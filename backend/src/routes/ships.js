@@ -14,8 +14,9 @@ router.get('/', (req, res) => {
   const params = [];
 
   if (status) {
+    const STATUS_VALUES = { Unresolved: '', Disputed: 'disputed', Inactive: 'inactive', Resolved: 'resolved' };
     where += ` AND ship_status = ?`;
-    params.push(status);
+    params.push(status in STATUS_VALUES ? STATUS_VALUES[status] : status);
   }
   if (flag) {
     where += ` AND flag = ?`;
@@ -42,7 +43,10 @@ router.get('/filters', (req, res) => {
       SELECT MAX(s2.scraped_at) FROM ships s2 WHERE s2.abandonment_id = ships.abandonment_id
     )
   `;
-  const statuses = db.prepare(`SELECT DISTINCT ship_status FROM ships ${latestWhere} ORDER BY ship_status`).all().map(r => r.ship_status).filter(Boolean);
+  const STATUS_LABELS = { '': 'Unresolved', disputed: 'Disputed', inactive: 'Inactive', resolved: 'Resolved' };
+  const statuses = db.prepare(`SELECT DISTINCT ship_status FROM ships ${latestWhere} ORDER BY ship_status`).all()
+    .map(r => STATUS_LABELS[r.ship_status] ?? r.ship_status)
+    .filter(Boolean);
   const flags = db.prepare(`SELECT DISTINCT flag FROM ships ${latestWhere} ORDER BY flag`).all().map(r => r.flag).filter(Boolean);
   const ports = db.prepare(`SELECT DISTINCT port_of_abandonment FROM ships ${latestWhere} ORDER BY port_of_abandonment`).all().map(r => r.port_of_abandonment).filter(Boolean);
   res.json({ statuses, flags, ports });

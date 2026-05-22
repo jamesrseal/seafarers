@@ -2,10 +2,11 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   flexRender,
 } from '@tanstack/react-table';
-import { useState, useMemo } from 'react';
-import { statusColor } from '../utils/statusColors';
+import { useState, useMemo, useEffect } from 'react';
+import { statusColor, statusLabel } from '../utils/statusColors';
 
 const COLUMNS = [
   { accessorKey: 'ship_name',           header: 'Ship Name' },
@@ -13,9 +14,8 @@ const COLUMNS = [
     accessorKey: 'ship_status',
     header: 'Status',
     cell: ({ getValue }) => {
-      const v = getValue() || 'Active';
       const { badge } = statusColor(getValue());
-      return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge}`}>{v}</span>;
+      return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge}`}>{statusLabel(getValue())}</span>;
     },
   },
   { accessorKey: 'flag',                header: 'Flag' },
@@ -40,17 +40,23 @@ const COLUMNS = [
   },
 ];
 
+const PAGE_SIZE = 50;
+
 export default function ShipTable({ ships, onSelect }) {
   const [sorting, setSorting] = useState([{ id: 'abandonment_date', desc: true }]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
   const columns = useMemo(() => COLUMNS, []);
+  useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [ships]);
 
   const table = useReactTable({
     data: ships,
     columns,
-    state: { sorting },
-    onSortingChange: setSorting,
+    state: { sorting, pagination },
+    onSortingChange: (updater) => { setSorting(updater); setPagination(p => ({ ...p, pageIndex: 0 })); },
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -90,6 +96,30 @@ export default function ShipTable({ ships, onSelect }) {
       </table>
       {ships.length === 0 && (
         <div className="text-center py-16 text-gray-400">No records found</div>
+      )}
+      {ships.length > PAGE_SIZE && (
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-between text-sm text-gray-600">
+          <span>
+            {table.getState().pagination.pageIndex * PAGE_SIZE + 1}–
+            {Math.min((table.getState().pagination.pageIndex + 1) * PAGE_SIZE, ships.length)} of {ships.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

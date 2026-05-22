@@ -1,11 +1,16 @@
 export const STATUS_COLORS = {
-  Inactive: { fill: '#bbc2e2', text: 'text-blue-400', badge: 'bg-blue-100 text-blue-800' },
-  resolved: { fill: '#7dce82', text: 'text-green-500', badge: 'bg-green-100 text-green-800' },
-  '':       { fill: '#de1a1a', text: 'text-red-500',   badge: 'bg-red-100 text-red-800' },
+  '':         { label: 'Unresolved', fill: '#e8e288', text: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-800' },
+  disputed:   { label: 'Disputed',   fill: '#de1a1a', text: 'text-red-500',    badge: 'bg-red-100 text-red-800' },
+  inactive:   { label: 'Inactive',   fill: '#9ca3af', text: 'text-gray-500',   badge: 'bg-gray-100 text-gray-600' },
+  resolved:   { label: 'Resolved',   fill: '#7dce82', text: 'text-green-500',  badge: 'bg-green-100 text-green-800' },
 };
 
 export function statusColor(status) {
-  return STATUS_COLORS[status] ?? { fill: '#e8e288', text: 'text-yellow-500', badge: 'bg-yellow-100 text-yellow-800' };
+  return STATUS_COLORS[status ?? ''] ?? STATUS_COLORS[''];
+}
+
+export function statusLabel(status) {
+  return STATUS_COLORS[status ?? '']?.label ?? status;
 }
 
 export function markerRadius(numSeafarers) {
