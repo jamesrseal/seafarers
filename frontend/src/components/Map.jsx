@@ -1,19 +1,38 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { statusColor, statusLabel, markerRadius } from '../utils/statusColors';
 
-function MapController({ ship, view }) {
+function MapController({ ship, view, portFilter, ships }) {
   const map = useMap();
+  const pendingPortFly = useRef(null);
+
   useEffect(() => { map.invalidateSize(); }, [view]);
+
   useEffect(() => {
     if (ship?.port_latitude && ship?.port_longitude) {
       map.flyTo([ship.port_latitude, ship.port_longitude], Math.max(map.getZoom(), 5), { duration: 1 });
     }
   }, [ship]);
+
+  // Mark that a fly is needed when the port filter changes
+  useEffect(() => {
+    pendingPortFly.current = portFilter || null;
+  }, [portFilter]);
+
+  // Execute the fly once ships load for the selected port
+  useEffect(() => {
+    if (!pendingPortFly.current) return;
+    const target = ships.find(s => s.port_latitude && s.port_longitude);
+    if (target) {
+      map.flyTo([target.port_latitude, target.port_longitude], 6, { duration: 1 });
+      pendingPortFly.current = null;
+    }
+  }, [ships]);
+
   return null;
 }
 
-export default function Map({ ships, onSelect, highlighted, view }) {
+export default function Map({ ships, onSelect, highlighted, view, portFilter }) {
   const mappable = ships.filter(s => s.port_latitude && s.port_longitude);
 
   return (
@@ -27,7 +46,7 @@ export default function Map({ ships, onSelect, highlighted, view }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapController ship={highlighted} view={view} />
+      <MapController ship={highlighted} view={view} portFilter={portFilter} ships={mappable} />
       {mappable.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id).map(ship => {
         const isHighlighted = !!highlighted;
         const { fill } = statusColor(ship.ship_status);
