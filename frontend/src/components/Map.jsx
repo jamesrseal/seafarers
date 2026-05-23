@@ -1,6 +1,68 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
-import { statusColor, statusLabel, markerRadius } from '../utils/statusColors';
+import { statusColor, statusLabel, markerRadius, STATUS_COLORS } from '../utils/statusColors';
+
+const SIZE_EXAMPLES = [
+  { label: '10', r: markerRadius(10) },
+  { label: '50', r: markerRadius(50) },
+  { label: '100+', r: markerRadius(100) },
+];
+
+function MapLegend() {
+  const [open, setOpen] = useState(false);
+  const maxR = SIZE_EXAMPLES[SIZE_EXAMPLES.length - 1].r;
+  const svgH = maxR * 2 + 4;
+
+  return (
+    <div className="absolute bottom-8 left-3 z-[1000] text-xs text-gray-700">
+      <div className="bg-white/90 border border-gray-200 rounded-lg shadow-md overflow-hidden">
+        <button
+          className="flex items-center gap-1.5 px-3 py-2 w-full text-left text-[11px] font-semibold text-gray-600 hover:bg-gray-50 pointer-events-auto"
+          onClick={() => setOpen(o => !o)}
+        >
+          <span>{open ? '▾' : '▸'}</span>
+          Legend
+        </button>
+        {open && (
+          <div className="px-3 pb-2.5 space-y-2.5 pointer-events-none border-t border-gray-100">
+            <div className="pt-2">
+              <div className="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1.5">Status</div>
+              <div className="space-y-1">
+                {Object.entries(STATUS_COLORS).map(([key, { fill, label }]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: fill, border: '1px solid #555' }} />
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1">Seafarers</div>
+              <div className="flex items-end gap-3">
+                {SIZE_EXAMPLES.map(({ label, r }) => (
+                  <div key={label} className="flex flex-col items-center gap-1">
+                    <svg width={maxR * 2 + 4} height={svgH}>
+                      <circle
+                        cx={(maxR * 2 + 4) / 2}
+                        cy={svgH - r - 2}
+                        r={r}
+                        fill="#9ca3af"
+                        fillOpacity={0.8}
+                        stroke="#555"
+                        strokeWidth={0.5}
+                      />
+                    </svg>
+                    <span className="text-[10px] text-gray-500">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function MapController({ ship, view, portFilter, ships }) {
   const map = useMap();
@@ -36,6 +98,8 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter }) 
   const mappable = ships.filter(s => s.port_latitude && s.port_longitude);
 
   return (
+    <div className="relative h-full w-full">
+    <MapLegend />
     <MapContainer
       center={[20, 10]}
       zoom={2}
@@ -75,5 +139,6 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter }) 
         );
       })}
     </MapContainer>
+    </div>
   );
 }
