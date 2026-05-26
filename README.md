@@ -1,6 +1,6 @@
 # Abandoned Seafarers Dashboard
 
-Interactive map and table of abandoned seafarer cases from the [ILO database](https://wwwex.ilo.org/dyn/r/abandonment/seafarers/search).
+[Interactive map](https://seafarers-1044.onrender.com/) and table of abandoned seafarer cases from the [ILO database](https://wwwex.ilo.org/dyn/r/abandonment/seafarers/search).
 
 This project started after reading about the [Ever Given crew](https://jalopnik.com/crew-of-ever-given-really-dont-want-to-spend-years-stuc-1846730643) and wanting a better way to visualize the ILO's abandonment case data. The original Python/Dash version has been rebuilt as a React + Node.js app with a SQLite database that stores scrape history so changes can be tracked over time.
 
