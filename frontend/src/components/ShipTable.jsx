@@ -13,8 +13,6 @@ const MONTHS = {
   july:7, august:8, september:9, october:10, november:11, december:12,
 };
 
-// Returns a YYYYMMDD integer for sorting. Unknown parts are 0.
-// Handles "1 April 2009", "August 2004", and "2001".
 function parseDateForSort(str) {
   if (!str) return 0;
   const parts = str.trim().split(/\s+/);
@@ -45,31 +43,52 @@ const COLUMNS = [
     cell: ({ getValue }) => getValue() || <span className="text-gray-400 italic">Unknown</span>,
   },
   { accessorKey: 'port_of_abandonment', header: 'Port' },
-  { accessorKey: 'num_seafarers',       header: '# Seafarers' },
+  { accessorKey: 'num_seafarers',       header: 'Seafarers' },
   {
     accessorKey: 'abandonment_date',
     header: 'Abandonment Date',
     sortingFn: (a, b, col) => parseDateForSort(a.getValue(col)) - parseDateForSort(b.getValue(col)),
   },
   {
-    accessorKey: 'ilo_url',
-    header: 'ILO',
-    cell: ({ getValue }) => getValue()
-      ? <a href={getValue()} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">Link</a>
-      : null,
+    id: 'links',
+    header: 'Links',
     enableSorting: false,
-  },
-  {
-    accessorKey: 'vessel_finder_url',
-    header: 'VesselFinder',
-    cell: ({ getValue }) => getValue()
-      ? <a href={getValue()} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">Link</a>
-      : null,
-    enableSorting: false,
+    cell: ({ row }) => {
+      const { ilo_url, vessel_finder_url } = row.original;
+      if (!ilo_url && !vessel_finder_url) return null;
+      return (
+        <div className="flex gap-2">
+          {ilo_url && (
+            <a href={ilo_url} target="_blank" rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-xs text-blue-600 hover:underline">
+              ILO
+            </a>
+          )}
+          {vessel_finder_url && (
+            <a href={vessel_finder_url} target="_blank" rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-xs text-blue-600 hover:underline">
+              VesselFinder
+            </a>
+          )}
+        </div>
+      );
+    },
   },
 ];
 
 const PAGE_SIZE = 50;
+
+function SortIcon({ column }) {
+  if (!column.getCanSort()) return null;
+  const sorted = column.getIsSorted();
+  return (
+    <span className={`ml-1 text-[10px] ${sorted ? 'text-blue-600' : 'text-gray-400'}`}>
+      {sorted === 'asc' ? '↑' : sorted === 'desc' ? '↓' : '↕'}
+    </span>
+  );
+}
 
 export default function ShipTable({ ships, onSelect, highlighted }) {
   const [sorting, setSorting] = useState([{ id: 'abandonment_date', desc: true }]);
@@ -88,71 +107,96 @@ export default function ShipTable({ ships, onSelect, highlighted }) {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const { pageIndex } = table.getState().pagination;
+  const pageCount = table.getPageCount();
+
   return (
-    <div className="overflow-auto h-full">
-      <table className="min-w-full text-sm border-collapse">
-        <thead className="bg-gray-100 sticky top-0 z-10">
-          {table.getHeaderGroups().map(hg => (
-            <tr key={hg.id}>
-              {hg.headers.map(h => (
-                <th
-                  key={h.id}
-                  onClick={h.column.getToggleSortingHandler()}
-                  className="text-left px-3 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap border-b border-gray-200"
+    <div className="flex flex-col h-full">
+      <div className="overflow-auto flex-1">
+        <table className="min-w-full text-sm border-collapse">
+          <thead className="bg-gray-100 sticky top-0 z-10">
+            {table.getHeaderGroups().map(hg => (
+              <tr key={hg.id}>
+                {hg.headers.map(h => {
+                  const canSort = h.column.getCanSort();
+                  const isSorted = h.column.getIsSorted();
+                  return (
+                    <th
+                      key={h.id}
+                      onClick={canSort ? h.column.getToggleSortingHandler() : undefined}
+                      className={`text-left px-3 py-2 text-xs font-semibold uppercase tracking-wide select-none whitespace-nowrap border-b border-gray-200 ${
+                        canSort ? 'cursor-pointer hover:bg-gray-200' : 'cursor-default'
+                      } ${isSorted ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                    >
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                      <SortIcon column={h.column} />
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row, i) => {
+              const isHighlighted = highlighted?.abandonment_id === row.original.abandonment_id;
+              return (
+                <tr
+                  key={row.id}
+                  onClick={() => onSelect(isHighlighted ? null : row.original)}
+                  className={`cursor-pointer hover:bg-blue-50 ${
+                    isHighlighted ? 'bg-blue-100 font-medium' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  }`}
                 >
-                  {flexRender(h.column.columnDef.header, h.getContext())}
-                  {h.column.getIsSorted() === 'asc' ? ' ↑' : h.column.getIsSorted() === 'desc' ? ' ↓' : ''}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row, i) => {
-            const isHighlighted = highlighted?.abandonment_id === row.original.abandonment_id;
-            return (
-            <tr
-              key={row.id}
-              onClick={() => onSelect(isHighlighted ? null : row.original)}
-              className={`cursor-pointer hover:bg-blue-50 ${isHighlighted ? 'bg-blue-100 font-medium' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-            >
-              {row.getVisibleCells().map(cell => (
-                <td key={cell.id} className="px-3 py-2 border-b border-gray-100 whitespace-nowrap max-w-[200px] truncate">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {ships.length === 0 && (
-        <div className="text-center py-16 text-gray-400">No records found</div>
-      )}
-      {ships.length > PAGE_SIZE && (
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-between text-sm text-gray-600">
-          <span>
-            {table.getState().pagination.pageIndex * PAGE_SIZE + 1}–
-            {Math.min((table.getState().pagination.pageIndex + 1) * PAGE_SIZE, ships.length)} of {ships.length}
+                  {row.getVisibleCells().map(cell => {
+                    const raw = cell.getValue();
+                    const title = typeof raw === 'string' ? raw : undefined;
+                    return (
+                      <td
+                        key={cell.id}
+                        title={title}
+                        className="px-3 py-2 border-b border-gray-100 whitespace-nowrap max-w-[200px] truncate"
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {ships.length === 0 && (
+          <div className="text-center py-16 text-gray-400">No records found</div>
+        )}
+      </div>
+
+      {/* Pagination — always visible */}
+      <div className="shrink-0 bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-between text-sm text-gray-600">
+        <span className="text-gray-500">
+          {ships.length === 0
+            ? 'No records'
+            : `${pageIndex * PAGE_SIZE + 1}–${Math.min((pageIndex + 1) * PAGE_SIZE, ships.length)} of ${ships.length}`}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50 disabled:cursor-default"
+          >
+            ← Prev
+          </button>
+          <span className="text-xs text-gray-400">
+            Page {pageIndex + 1} of {Math.max(pageCount, 1)}
           </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
-            >
-              ← Prev
-            </button>
-            <button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
-            >
-              Next →
-            </button>
-          </div>
+          <button
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50 disabled:cursor-default"
+          >
+            Next →
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
