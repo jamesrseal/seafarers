@@ -1,7 +1,27 @@
+function portCountry(port) {
+  if (!port) return null;
+  const parts = port.split(',');
+  return parts.length > 1 ? parts[parts.length - 1].trim() : null;
+}
+
 export default function FilterBar({ filters, setFilters, options, total, onClearAll }) {
   function set(key) {
     return (e) => setFilters(f => ({ ...f, [key]: e.target.value }));
   }
+
+  function setCountry(e) {
+    const country = e.target.value;
+    setFilters(f => ({
+      ...f,
+      country,
+      // clear port if it belongs to a different country
+      port: country && f.port && portCountry(f.port) !== country ? '' : f.port,
+    }));
+  }
+
+  const visiblePorts = filters.country
+    ? options.ports.filter(p => portCountry(p) === filters.country)
+    : options.ports;
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
@@ -30,9 +50,20 @@ export default function FilterBar({ filters, setFilters, options, total, onClear
           onChange={set('flag')}
           className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
-          <option value="">All flags</option>
+          <option value="">All flags (registration)</option>
           {options.flags.map(f => (
             <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.country}
+          onChange={setCountry}
+          className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <option value="">All countries (abandonment)</option>
+          {(options.countries ?? []).map(c => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
 
@@ -42,7 +73,7 @@ export default function FilterBar({ filters, setFilters, options, total, onClear
           className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <option value="">All ports</option>
-          {options.ports.map(p => (
+          {visiblePorts.map(p => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>

@@ -4,7 +4,7 @@ const db = require('../db/database');
 
 // Latest snapshot of every ship, with optional filters
 router.get('/', (req, res) => {
-  const { status, flag, port, q } = req.query;
+  const { status, flag, port, country, q } = req.query;
 
   let where = `
     WHERE scraped_at = (
@@ -25,6 +25,9 @@ router.get('/', (req, res) => {
   if (port) {
     where += ` AND port_of_abandonment = ?`;
     params.push(port);
+  } else if (country) {
+    where += ` AND (port_of_abandonment LIKE ? OR port_of_abandonment = ?)`;
+    params.push(`%, ${country}`, country);
   }
   if (q) {
     where += ` AND (ship_name LIKE ? OR circumstances LIKE ? OR port_of_abandonment LIKE ?)`;
@@ -49,7 +52,11 @@ router.get('/filters', (req, res) => {
     .filter(Boolean);
   const flags = db.prepare(`SELECT DISTINCT flag FROM ships ${latestWhere} ORDER BY flag`).all().map(r => r.flag).filter(Boolean);
   const ports = db.prepare(`SELECT DISTINCT port_of_abandonment FROM ships ${latestWhere} ORDER BY port_of_abandonment`).all().map(r => r.port_of_abandonment).filter(Boolean);
-  res.json({ statuses, flags, ports });
+  const countries = [...new Set(ports.map(p => {
+    const parts = p.split(',');
+    return parts.length > 1 ? parts[parts.length - 1].trim() : null;
+  }).filter(Boolean))].sort();
+  res.json({ statuses, flags, ports, countries });
 });
 
 // Single ship — latest

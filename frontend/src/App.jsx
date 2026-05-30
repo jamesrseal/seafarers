@@ -7,7 +7,7 @@ import ShipDetail from './components/ShipDetail';
 import { useShips, useFilters } from './hooks/useShips';
 
 export default function App() {
-  const [filters, setFilters] = useState({ status: '', flag: '', port: '', q: '' });
+  const [filters, setFilters] = useState({ status: '', flag: '', port: '', country: '', q: '' });
   const [selectedShip, setSelectedShip] = useState(null);   // modal (map marker click)
   const [highlightedShip, setHighlightedShip] = useState(null); // map highlight (table row click)
   const [view, setView] = useState('map'); // 'map' | 'table' | 'split'
@@ -24,7 +24,7 @@ export default function App() {
         options={filterOptions}
         total={ships.length}
         onClearAll={() => {
-          setFilters({ status: '', flag: '', port: '', q: '' });
+          setFilters({ status: '', flag: '', port: '', country: '', q: '' });
           setHighlightedShip(null);
           setSelectedShip(null);
         }}

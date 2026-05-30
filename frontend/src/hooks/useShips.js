@@ -8,16 +8,17 @@ export function useShips(filters) {
   const fetchShips = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (filters.status) params.set('status', filters.status);
-    if (filters.flag)   params.set('flag', filters.flag);
-    if (filters.port)   params.set('port', filters.port);
-    if (filters.q)      params.set('q', filters.q);
+    if (filters.status)  params.set('status', filters.status);
+    if (filters.flag)    params.set('flag', filters.flag);
+    if (filters.port)    params.set('port', filters.port);
+    if (filters.country) params.set('country', filters.country);
+    if (filters.q)       params.set('q', filters.q);
 
     fetch(`/api/ships?${params}`)
       .then(r => r.json())
       .then(data => { setShips(data); setLoading(false); })
       .catch(err => { setError(err.message); setLoading(false); });
-  }, [filters.status, filters.flag, filters.port, filters.q]);
+  }, [filters.status, filters.flag, filters.port, filters.country, filters.q]);
 
   useEffect(() => { fetchShips(); }, [fetchShips]);
 
@@ -25,7 +26,7 @@ export function useShips(filters) {
 }
 
 export function useFilters() {
-  const [options, setOptions] = useState({ statuses: [], flags: [], ports: [] });
+  const [options, setOptions] = useState({ statuses: [], flags: [], ports: [], countries: [] });
 
   useEffect(() => {
     fetch('/api/ships/filters')
