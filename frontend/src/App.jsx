@@ -38,7 +38,7 @@ export default function App() {
       {/* View toggle */}
       <div className="bg-white border-b border-gray-200 px-6 py-1.5">
         <div className="max-w-7xl mx-auto flex gap-2">
-          {[['map', 'Map'], ['split', 'Map + Table'], ['table', 'Table'], ['dashboard', 'Dashboard'], ['report', 'Report']].map(([v, label]) => (
+          {[['map', 'Map'], ['split', 'Map + Table'], ['table', 'Table'], ['dashboard', 'Dashboard'], ['report', 'Report Seafarer Abandonment']].map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -76,6 +76,10 @@ export default function App() {
       )}
 
       <ShipDetail ship={selectedShip} onClose={() => setSelectedShip(null)} />
+
+      <footer className="shrink-0 bg-gray-50 border-t border-gray-200 px-6 py-1.5 text-center text-xs text-gray-400">
+        Disclaimer: This site is not affiliated with the ILO/IMO Joint Database on Abandonment of Seafarers and takes no responsibility for maintaining, updating, or reporting on abandoned seafarers.
+      </footer>
     </div>
   );
 }

@@ -20,13 +20,10 @@ const EMPTY = {
   isCommentSubmission: '',
 };
 
-function Field({ label, hint, children, required }) {
+function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       {hint && <p className="text-xs text-gray-400 mb-1">{hint}</p>}
       {children}
     </div>
@@ -70,8 +67,7 @@ function RadioGroup({ name, value, onChange }) {
 }
 
 function buildMailtoBody(f) {
-  const line = (label, val) => val ? `${label}: ${val}\n` : '';
-  const yn = v => v || '—';
+  const line = (label, val) => `${label}: ${val || '—'}`;
 
   return [
     'REPORT OF ABANDONMENT\n',
@@ -86,23 +82,23 @@ function buildMailtoBody(f) {
     line('Nationalities',      f.nationalities),
     '',
     '--- ABANDONMENT ---',
-    line('Port of abandonment',       f.portOfAbandonment),
-    line('Date of abandonment',       f.abandonmentDate),
-    line('Date of notification',      f.notificationDate),
-    line('Circumstances',             f.circumstances),
+    line('Port of abandonment',      f.portOfAbandonment),
+    line('Date of abandonment',      f.abandonmentDate),
+    line('Date of notification',     f.notificationDate),
+    line('Circumstances',            f.circumstances),
     '',
     '--- RESOLUTION STATUS ---',
-    line('Actions taken',             f.actionsTaken),
-    line('Repatriation status',       f.repatriationStatus),
-    line('Outstanding remuneration',  f.remunerationStatus),
+    line('Actions taken',            f.actionsTaken),
+    line('Repatriation status',      f.repatriationStatus),
+    line('Outstanding remuneration', f.remunerationStatus),
     '',
     '--- REPORTING ---',
-    line('Reporting Member / Org.',   f.reportingOrg),
-    line('Comments',                  f.comments),
+    line('Reporting Member / Org.',  f.reportingOrg),
+    line('Comments',                 f.comments),
     '',
     '--- SUBMISSION TYPE ---',
-    `Follow-up submission: ${yn(f.isFollowUp)}`,
-    `Comments/observations only: ${yn(f.isCommentSubmission)}`,
+    line('Follow-up submission',         f.isFollowUp),
+    line('Comments/observations only',   f.isCommentSubmission),
   ].join('\n');
 }
 
@@ -164,20 +160,38 @@ export default function ReportForm() {
             client with this report pre-filled, addressed to{' '}
             <span className="font-medium text-gray-700">sector@ilo.org</span>.
           </p>
+          <div className="flex flex-wrap gap-4 mt-2 text-sm">
+            <a
+              href="https://www.imo.org/en/ourwork/legal/pages/seafarer-abandonment.aspx"
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              IMO — Seafarer Abandonment
+            </a>
+            <a
+              href="https://www.ilo.org/sites/default/files/wcmsp5/groups/public/@ed_dialogue/@sector/documents/genericdocument/wcms_531324.pdf"
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Original ILO form (PDF)
+            </a>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
 
           <Section title="Vessel">
-            <Field label="Name of ship" required>
-              <input className={inputClass} value={form.shipName} onChange={set('shipName')} required />
+            <Field label="Name of ship">
+              <input className={inputClass} value={form.shipName} onChange={set('shipName')} />
             </Field>
-            <Field label="Flag" required>
-              <input className={inputClass} value={form.flag} onChange={set('flag')} required />
+            <Field label="Flag">
+              <input className={inputClass} value={form.flag} onChange={set('flag')} />
             </Field>
-            <Field label="IMO Number" hint="7-digit number" required>
+            <Field label="IMO Number" hint="7-digit number">
               <input className={inputClass} value={form.imoNumber} onChange={set('imoNumber')}
-                pattern="\d{7}" maxLength={7} required />
+                pattern="\d{7}" maxLength={7} />
             </Field>
             <Field label="Type of vessel">
               <input className={inputClass} value={form.vesselType} onChange={set('vesselType')} />
