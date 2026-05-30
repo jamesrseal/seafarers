@@ -4,6 +4,7 @@ import FilterBar from './components/FilterBar';
 import Map from './components/Map';
 import ShipTable from './components/ShipTable';
 import ShipDetail from './components/ShipDetail';
+import Dashboard from './components/Dashboard';
 import { useShips, useFilters } from './hooks/useShips';
 
 const EMPTY_FILTERS = { status: '', flag: '', port: '', country: '', q: '' };
@@ -36,7 +37,7 @@ export default function App() {
       {/* View toggle */}
       <div className="bg-white border-b border-gray-200 px-6 py-1.5">
         <div className="max-w-7xl mx-auto flex gap-2">
-          {[['map', 'Map'], ['split', 'Map + Table'], ['table', 'Table']].map(([v, label]) => (
+          {[['map', 'Map'], ['split', 'Map + Table'], ['table', 'Table'], ['dashboard', 'Dashboard']].map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -48,7 +49,9 @@ export default function App() {
         </div>
       </div>
 
-      {loading ? (
+      {view === 'dashboard' ? (
+        <Dashboard />
+      ) : loading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400">Loading…</div>
       ) : (
         <div className={`flex-1 overflow-hidden flex ${view === 'table' ? 'flex-col' : 'flex-row'}`}>
