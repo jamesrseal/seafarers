@@ -39,7 +39,11 @@ const COLUMNS = [
       return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge}`}>{statusLabel(getValue())}</span>;
     },
   },
-  { accessorKey: 'flag',                header: 'Flag' },
+  {
+    accessorKey: 'flag',
+    header: 'Flag',
+    cell: ({ getValue }) => getValue() || <span className="text-gray-400 italic">Unknown</span>,
+  },
   { accessorKey: 'port_of_abandonment', header: 'Port' },
   { accessorKey: 'num_seafarers',       header: '# Seafarers' },
   {

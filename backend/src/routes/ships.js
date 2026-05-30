@@ -19,8 +19,12 @@ router.get('/', (req, res) => {
     params.push(status in STATUS_VALUES ? STATUS_VALUES[status] : status);
   }
   if (flag) {
-    where += ` AND flag = ?`;
-    params.push(flag);
+    if (flag === 'Unknown') {
+      where += ` AND (flag IS NULL OR flag = '')`;
+    } else {
+      where += ` AND flag = ?`;
+      params.push(flag);
+    }
   }
   if (port) {
     where += ` AND port_of_abandonment = ?`;
@@ -50,7 +54,9 @@ router.get('/filters', (req, res) => {
   const statuses = db.prepare(`SELECT DISTINCT ship_status FROM ships ${latestWhere} ORDER BY ship_status`).all()
     .map(r => STATUS_LABELS[r.ship_status] ?? r.ship_status)
     .filter(Boolean);
-  const flags = db.prepare(`SELECT DISTINCT flag FROM ships ${latestWhere} ORDER BY flag`).all().map(r => r.flag).filter(Boolean);
+  const flagRows = db.prepare(`SELECT DISTINCT flag FROM ships ${latestWhere} ORDER BY flag`).all().map(r => r.flag);
+  const hasUnknownFlag = flagRows.some(f => !f);
+  const flags = [...flagRows.filter(Boolean), ...(hasUnknownFlag ? ['Unknown'] : [])];
   const ports = db.prepare(`SELECT DISTINCT port_of_abandonment FROM ships ${latestWhere} ORDER BY port_of_abandonment`).all().map(r => r.port_of_abandonment).filter(Boolean);
   const countries = [...new Set(ports.map(p => {
     const parts = p.split(',');

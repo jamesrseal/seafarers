@@ -4,24 +4,47 @@ function portCountry(port) {
   return parts.length > 1 ? parts[parts.length - 1].trim() : null;
 }
 
-export default function FilterBar({ filters, setFilters, options, total, onClearAll }) {
+const EMPTY = { status: '', flag: '', port: '', country: '', q: '' };
+
+function derived(ships, key) {
+  return [...new Set(ships.map(s => s[key]).filter(Boolean))].sort();
+}
+
+export default function FilterBar({ filters, setFilters, ships, options, total, onClearAll }) {
+  const hasFilter = Object.values(filters).some(Boolean);
+
+  // When a filter is active, narrow the other dropdowns to values present in the filtered results.
+  // When no filter is active, show the full static lists.
+  const visibleFlags = (() => {
+    const base = hasFilter ? ships : null;
+    const known = base ? derived(base, 'flag') : options.flags.filter(f => f !== 'Unknown');
+    const hasUnknown = base
+      ? base.some(s => !s.flag)
+      : options.flags.includes('Unknown');
+    return [...known, ...(hasUnknown ? ['Unknown'] : [])];
+  })();
+  const visiblePorts    = hasFilter
+    ? derived(ships, 'port_of_abandonment')
+    : filters.country
+      ? options.ports.filter(p => portCountry(p) === filters.country)
+      : options.ports;
+  const visibleCountries = hasFilter
+    ? [...new Set(derived(ships, 'port_of_abandonment').map(portCountry).filter(Boolean))].sort()
+    : (options.countries ?? []);
+  const visibleStatuses = hasFilter ? derived(ships, 'ship_status') : options.statuses;
+
   function set(key) {
-    return (e) => setFilters(f => ({ ...f, [key]: e.target.value }));
+    return (e) => {
+      const value = e.target.value;
+      setFilters(value ? { ...EMPTY, [key]: value } : { ...EMPTY });
+    };
   }
 
   function setCountry(e) {
-    const country = e.target.value;
-    setFilters(f => ({
-      ...f,
-      country,
-      // clear port if it belongs to a different country
-      port: country && f.port && portCountry(f.port) !== country ? '' : f.port,
-    }));
+    setFilters({ ...EMPTY, country: e.target.value });
   }
 
-  const visiblePorts = filters.country
-    ? options.ports.filter(p => portCountry(p) === filters.country)
-    : options.ports;
+  const STATUS_LABELS = { '': 'Unresolved', disputed: 'Disputed', inactive: 'Inactive', resolved: 'Resolved' };
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
@@ -40,8 +63,8 @@ export default function FilterBar({ filters, setFilters, options, total, onClear
           className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <option value="">All statuses</option>
-          {options.statuses.map(s => (
-            <option key={s} value={s}>{s || '(Active)'}</option>
+          {visibleStatuses.map(s => (
+            <option key={s} value={STATUS_LABELS[s] ?? s}>{STATUS_LABELS[s] ?? s}</option>
           ))}
         </select>
 
@@ -51,7 +74,7 @@ export default function FilterBar({ filters, setFilters, options, total, onClear
           className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <option value="">All flags (registration)</option>
-          {options.flags.map(f => (
+          {visibleFlags.map(f => (
             <option key={f} value={f}>{f}</option>
           ))}
         </select>
@@ -62,7 +85,7 @@ export default function FilterBar({ filters, setFilters, options, total, onClear
           className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
           <option value="">All countries (abandonment)</option>
-          {(options.countries ?? []).map(c => (
+          {visibleCountries.map(c => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>

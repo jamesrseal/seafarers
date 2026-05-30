@@ -1,17 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import Map from './components/Map';
 import ShipTable from './components/ShipTable';
 import ShipDetail from './components/ShipDetail';
-import NoShipsModal from './components/NoShipsModal';
 import { useShips, useFilters } from './hooks/useShips';
 
 const EMPTY_FILTERS = { status: '', flag: '', port: '', country: '', q: '' };
 
 export default function App() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [lastFilter, setLastFilter] = useState(null); // { key, value }
   const [selectedShip, setSelectedShip] = useState(null);
   const [highlightedShip, setHighlightedShip] = useState(null);
   const [view, setView] = useState('map');
@@ -19,41 +17,20 @@ export default function App() {
   const { ships, loading } = useShips(filters);
   const filterOptions = useFilters();
 
-  // Track which filter was most recently set to a non-empty value
-  const prevFilters = useRef(filters);
-  useEffect(() => {
-    const changed = Object.entries(filters).find(
-      ([k, v]) => v && v !== prevFilters.current[k]
-    );
-    if (changed) setLastFilter({ key: changed[0], value: changed[1] });
-    prevFilters.current = filters;
-  }, [filters]);
-
-  const hasActiveFilters = Object.values(filters).some(Boolean);
-  const showNoShips = !loading && ships.length === 0 && hasActiveFilters;
-
-  function clearAll() {
-    setFilters(EMPTY_FILTERS);
-    setLastFilter(null);
-    setHighlightedShip(null);
-    setSelectedShip(null);
-  }
-
-  function clearLast() {
-    if (!lastFilter) return;
-    setFilters(f => ({ ...f, [lastFilter.key]: '' }));
-    setLastFilter(null);
-  }
-
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header />
       <FilterBar
         filters={filters}
         setFilters={(f) => { setFilters(f); setHighlightedShip(null); }}
+        ships={ships}
         options={filterOptions}
         total={ships.length}
-        onClearAll={clearAll}
+        onClearAll={() => {
+          setFilters(EMPTY_FILTERS);
+          setHighlightedShip(null);
+          setSelectedShip(null);
+        }}
       />
 
       {/* View toggle */}
@@ -93,9 +70,6 @@ export default function App() {
       )}
 
       <ShipDetail ship={selectedShip} onClose={() => setSelectedShip(null)} />
-      {showNoShips && (
-        <NoShipsModal lastFilter={lastFilter} onClearLast={clearLast} onClearAll={clearAll} />
-      )}
     </div>
   );
 }
