@@ -8,6 +8,27 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
 
+const MONTHS = {
+  january:1, february:2, march:3, april:4, may:5, june:6,
+  july:7, august:8, september:9, october:10, november:11, december:12,
+};
+
+// Returns a YYYYMMDD integer for sorting. Unknown parts are 0.
+// Handles "1 April 2009", "August 2004", and "2001".
+function parseDateForSort(str) {
+  if (!str) return 0;
+  const parts = str.trim().split(/\s+/);
+  if (parts.length === 1) return parseInt(parts[0], 10) * 10000;
+  if (parts.length === 2) {
+    const month = MONTHS[parts[0].toLowerCase()] ?? 0;
+    return parseInt(parts[1], 10) * 10000 + month * 100;
+  }
+  const day   = parseInt(parts[0], 10);
+  const month = MONTHS[parts[1].toLowerCase()] ?? 0;
+  const year  = parseInt(parts[2], 10);
+  return year * 10000 + month * 100 + day;
+}
+
 const COLUMNS = [
   { accessorKey: 'ship_name',           header: 'Ship Name' },
   {
@@ -21,7 +42,11 @@ const COLUMNS = [
   { accessorKey: 'flag',                header: 'Flag' },
   { accessorKey: 'port_of_abandonment', header: 'Port' },
   { accessorKey: 'num_seafarers',       header: '# Seafarers' },
-  { accessorKey: 'abandonment_date',    header: 'Date' },
+  {
+    accessorKey: 'abandonment_date',
+    header: 'Abandonment Date',
+    sortingFn: (a, b, col) => parseDateForSort(a.getValue(col)) - parseDateForSort(b.getValue(col)),
+  },
   {
     accessorKey: 'ilo_url',
     header: 'ILO',
