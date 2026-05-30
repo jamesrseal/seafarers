@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import { statusColor, statusLabel, markerRadius, STATUS_COLORS } from '../utils/statusColors';
 
@@ -64,9 +64,10 @@ function MapLegend() {
   );
 }
 
-function MapController({ ship, view, portFilter, ships }) {
+function MapController({ ship, view, portFilter, countryFilter, ships }) {
   const map = useMap();
   const pendingPortFly = useRef(null);
+  const pendingCountryFit = useRef(null);
 
   useEffect(() => { map.invalidateSize(); }, [view]);
 
@@ -76,26 +77,38 @@ function MapController({ ship, view, portFilter, ships }) {
     }
   }, [ship]);
 
-  // Mark that a fly is needed when the port filter changes
   useEffect(() => {
     pendingPortFly.current = portFilter || null;
   }, [portFilter]);
 
-  // Execute the fly once ships load for the selected port
   useEffect(() => {
-    if (!pendingPortFly.current) return;
-    const target = ships.find(s => s.port_latitude && s.port_longitude);
-    if (target) {
-      map.flyTo([target.port_latitude, target.port_longitude], 6, { duration: 1 });
-      pendingPortFly.current = null;
+    pendingCountryFit.current = countryFilter || null;
+  }, [countryFilter]);
+
+  useEffect(() => {
+    if (pendingPortFly.current) {
+      const target = ships.find(s => s.port_latitude && s.port_longitude);
+      if (target) {
+        map.setView([target.port_latitude, target.port_longitude], 6, { animate: true, duration: 0.4 });
+        pendingPortFly.current = null;
+      }
+      return;
+    }
+    if (pendingCountryFit.current) {
+      const coords = ships.filter(s => s.port_latitude && s.port_longitude)
+        .map(s => [s.port_latitude, s.port_longitude]);
+      if (coords.length > 0) {
+        map.fitBounds(coords, { padding: [40, 40], maxZoom: 8, animate: true, duration: 0.4 });
+        pendingCountryFit.current = null;
+      }
     }
   }, [ships]);
 
   return null;
 }
 
-export default function Map({ ships, onSelect, highlighted, view, portFilter }) {
-  const mappable = ships.filter(s => s.port_latitude && s.port_longitude);
+export default function Map({ ships, onSelect, highlighted, view, portFilter, countryFilter }) {
+  const mappable = useMemo(() => ships.filter(s => s.port_latitude && s.port_longitude), [ships]);
 
   return (
     <div className="relative h-full w-full">
@@ -110,7 +123,7 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter }) 
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapController ship={highlighted} view={view} portFilter={portFilter} ships={mappable} />
+      <MapController ship={highlighted} view={view} portFilter={portFilter} countryFilter={countryFilter} ships={mappable} />
       {mappable.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id).map(ship => {
         const isHighlighted = !!highlighted;
         const { fill } = statusColor(ship.ship_status);
