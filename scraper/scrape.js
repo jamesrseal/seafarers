@@ -182,7 +182,7 @@ function extractApexFields() {
     num_seafarers:       parseInt(val('P3_SEAFARERS_NUMBER') || '', 10) || null,
     circumstances:       val('P3_CIRCUMSTANCES') || '',
     comments:            txt('#R871520703199102648 a-dynamic-content') || '',
-    vessel_finder_url:   imo ? `https://www.vesselfinder.com/vessels?name=${imo}` : null,
+    vessel_finder_url:   imo ? `https://www.vesselfinder.com/?imo=${imo}` : null,
   };
 }
 

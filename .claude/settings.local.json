@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const t = require\\('@tanstack/react-table'\\); console.log\\(typeof t.getPaginationRowModel\\);\")",
+      "Bash(pkill -f \"node.*backend\")",
+      "Bash(npm start *)",
+      "Bash(curl -s http://localhost:3001/api/ships/filters)",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); console.log\\('Statuses:', d.statuses\\);\")",
+      "Bash(node *)",
+      "Bash(/usr/bin/python3 -c \"import geopy; print\\('geopy ok'\\)\")",
+      "Bash(/usr/bin/python3 --version)",
+      "Read(//usr/**)",
+      "Read(//opt/**)",
+      "Read(//Users/jamesseal/Library/**)"
+    ]
+  }
+}
