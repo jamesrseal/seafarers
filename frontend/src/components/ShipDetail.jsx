@@ -10,14 +10,28 @@ export default function ShipDetail({ ship, onClose }) {
         className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between p-5 border-b border-gray-200">
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-gray-200">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{ship.ship_name}</h2>
             <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${badge}`}>
               {statusLabel(ship.ship_status)}
             </span>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+          <div className="flex items-center gap-2 shrink-0">
+            {ship.ilo_url && (
+              <a href={ship.ilo_url} target="_blank" rel="noreferrer"
+                className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                ILO Record
+              </a>
+            )}
+            {ship.vessel_finder_url && (
+              <a href={ship.vessel_finder_url} target="_blank" rel="noreferrer"
+                className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
+                VesselFinder
+              </a>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none ml-1">&times;</button>
+          </div>
         </div>
 
         <dl className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
@@ -42,21 +56,6 @@ export default function ShipDetail({ ship, onClose }) {
             <Field label="Comments" value={ship.comments} full />
           )}
         </dl>
-
-        <div className="px-5 pb-5 flex gap-3">
-          {ship.ilo_url && (
-            <a href={ship.ilo_url} target="_blank" rel="noreferrer"
-              className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-              ILO Record
-            </a>
-          )}
-          {ship.vessel_finder_url && (
-            <a href={ship.vessel_finder_url} target="_blank" rel="noreferrer"
-              className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
-              VesselFinder
-            </a>
-          )}
-        </div>
       </div>
     </div>
   );
