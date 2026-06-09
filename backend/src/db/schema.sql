@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS ships (
   fishing_vessel       INTEGER DEFAULT 0,
   ilo_url              TEXT,
   vessel_finder_url    TEXT,
-  flag_url             TEXT
+  flag_url             TEXT,
+  last_activity_date   TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_abandonment_id ON ships(abandonment_id);

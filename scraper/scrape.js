@@ -150,6 +150,28 @@ function postJson(url, payload) {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ---------------------------------------------------------------------------
+// Extract the most recent date from a comments string (format: "DD Month YYYY:")
+// Returns ISO date string (YYYY-MM-DD) or null
+// ---------------------------------------------------------------------------
+const MONTH_MAP = {
+  january:0, february:1, march:2, april:3, may:4, june:5,
+  july:6, august:7, september:8, october:9, november:10, december:11,
+};
+
+function parseLastActivityDate(comments) {
+  if (!comments) return null;
+  const re = /\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\s*:/gi;
+  let latest = null;
+  let match;
+  while ((match = re.exec(comments)) !== null) {
+    const d = new Date(parseInt(match[3], 10), MONTH_MAP[match[2].toLowerCase()], parseInt(match[1], 10));
+    if (!latest || d > latest) latest = d;
+  }
+  if (!latest) return null;
+  return `${latest.getFullYear()}-${String(latest.getMonth() + 1).padStart(2, '0')}-${String(latest.getDate()).padStart(2, '0')}`;
+}
+
+// ---------------------------------------------------------------------------
 // Extract data directly from APEX DOM fields using Playwright evaluate
 // ---------------------------------------------------------------------------
 function extractApexFields() {
@@ -217,6 +239,7 @@ async function scrapeOne(page, id, portOverrides, flagUrls) {
     fishing_vessel:      /fishing/i.test(fields.vessel_type) ? 1 : 0,
     vessel_finder_url:   fields.vessel_finder_url,
     flag_url:            flagUrls[fields.flag] || null,
+    last_activity_date:  parseLastActivityDate(fields.comments),
   };
 }
 

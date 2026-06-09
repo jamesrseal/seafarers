@@ -50,6 +50,16 @@ const COLUMNS = [
     sortingFn: (a, b, col) => parseDateForSort(a.getValue(col)) - parseDateForSort(b.getValue(col)),
   },
   {
+    accessorKey: 'last_activity_date',
+    header: 'Last Activity',
+    sortingFn: (a, b, col) => {
+      const av = a.getValue(col) ?? '';
+      const bv = b.getValue(col) ?? '';
+      return av < bv ? -1 : av > bv ? 1 : 0;
+    },
+    cell: ({ getValue }) => getValue() ?? <span className="text-gray-400">—</span>,
+  },
+  {
     id: 'links',
     header: 'Links',
     enableSorting: false,
