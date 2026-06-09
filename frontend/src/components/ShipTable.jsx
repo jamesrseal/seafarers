@@ -101,7 +101,7 @@ function SortIcon({ column }) {
 }
 
 export default function ShipTable({ ships, onSelect, highlighted }) {
-  const [sorting, setSorting] = useState([{ id: 'abandonment_date', desc: true }]);
+  const [sorting, setSorting] = useState([{ id: 'last_activity_date', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
   const columns = useMemo(() => COLUMNS, []);
   useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [ships]);
