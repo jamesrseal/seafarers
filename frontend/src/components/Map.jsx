@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
-import { statusColor, statusLabel, markerRadius, STATUS_COLORS } from '../utils/statusColors';
+import { statusColor, statusLabel, markerRadius, markerRecency, STATUS_COLORS, RECENCY_LEGEND } from '../utils/statusColors';
 
 const SIZE_EXAMPLES = [
   { label: '10', r: markerRadius(10) },
@@ -31,6 +31,21 @@ function MapLegend() {
                 {Object.entries(STATUS_COLORS).map(([key, { fill, label }]) => (
                   <div key={key} className="flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: fill, border: '1px solid #555' }} />
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1.5">Last activity</div>
+              <div className="space-y-1">
+                {RECENCY_LEGEND.map(({ label, fillOpacity, weight, strokeColor }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{
+                      background: '#9ca3af',
+                      opacity: fillOpacity,
+                      border: `${weight}px solid ${strokeColor}`,
+                    }} />
                     <span>{label}</span>
                   </div>
                 ))}
@@ -128,6 +143,7 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter, co
         const isHighlighted = !!highlighted;
         const { fill } = statusColor(ship.ship_status);
         const r = markerRadius(ship.num_seafarers);
+        const recency = markerRecency(ship.last_activity_date);
         return (
           <CircleMarker
             key={ship.abandonment_id}
@@ -135,9 +151,9 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter, co
             radius={isHighlighted ? r + 5 : r}
             pathOptions={{
               fillColor: fill,
-              fillOpacity: isHighlighted ? 1 : 0.8,
-              color: isHighlighted ? '#fff' : '#333',
-              weight: isHighlighted ? 2.5 : 0.5,
+              fillOpacity: isHighlighted ? 1 : recency.fillOpacity,
+              color: isHighlighted ? '#fff' : recency.strokeColor,
+              weight: isHighlighted ? 2.5 : recency.weight,
             }}
             eventHandlers={{ click: () => onSelect(ship) }}
           >
