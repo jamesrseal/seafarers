@@ -28,8 +28,8 @@ function MapLegend() {
             <div className="pt-2">
               <div className="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1.5">Status</div>
               <div className="space-y-1">
-                {Object.entries(STATUS_COLORS).map(([key, { fill, label }]) => (
-                  <div key={key} className="flex items-center gap-2">
+                {Object.entries(STATUS_COLORS).map(([key, { fill, label, definition }]) => (
+                  <div key={key} className="flex items-center gap-2" title={definition}>
                     <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ background: fill, border: '1px solid #555' }} />
                     <span>{label}</span>
                   </div>

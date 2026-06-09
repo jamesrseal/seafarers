@@ -33,8 +33,8 @@ const COLUMNS = [
     accessorKey: 'ship_status',
     header: 'Status',
     cell: ({ getValue }) => {
-      const { badge } = statusColor(getValue());
-      return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge}`}>{statusLabel(getValue())}</span>;
+      const { badge, definition } = statusColor(getValue());
+      return <span className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-help ${badge}`} title={definition}>{statusLabel(getValue())}</span>;
     },
   },
   {

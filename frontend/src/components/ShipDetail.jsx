@@ -39,7 +39,7 @@ function parseComments(comments) {
 
 export default function ShipDetail({ ship, onClose }) {
   if (!ship) return null;
-  const { badge } = statusColor(ship.ship_status);
+  const { badge, definition } = statusColor(ship.ship_status);
   const commentEntries = parseComments(ship.comments);
 
   return (
@@ -50,26 +50,30 @@ export default function ShipDetail({ ship, onClose }) {
       >
         <div className="p-5 border-b border-gray-200">
           <div className="flex items-start justify-between gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">{ship.ship_name}</h2>
+            <div className="flex items-center flex-wrap gap-2">
+              <h2 className="text-xl font-semibold text-gray-900">{ship.ship_name}</h2>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-help ${badge}`} title={definition}>
+                {statusLabel(ship.ship_status)}
+              </span>
+            </div>
             <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
           </div>
-          <div className="flex items-center flex-wrap gap-2 mt-2">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge}`}>
-              {statusLabel(ship.ship_status)}
-            </span>
-            {ship.ilo_url && (
-              <a href={ship.ilo_url} target="_blank" rel="noreferrer"
-                className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                ILO Record
-              </a>
-            )}
-            {ship.vessel_finder_url && (
-              <a href={ship.vessel_finder_url} target="_blank" rel="noreferrer"
-                className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
-                VesselFinder
-              </a>
-            )}
-          </div>
+          {(ship.ilo_url || ship.vessel_finder_url) && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {ship.ilo_url && (
+                <a href={ship.ilo_url} target="_blank" rel="noreferrer"
+                  className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                  ILO Record
+                </a>
+              )}
+              {ship.vessel_finder_url && (
+                <a href={ship.vessel_finder_url} target="_blank" rel="noreferrer"
+                  className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
+                  VesselFinder
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         <dl className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">

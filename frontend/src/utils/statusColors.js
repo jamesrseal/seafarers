@@ -1,8 +1,8 @@
 export const STATUS_COLORS = {
-  '':         { label: 'Unresolved', fill: '#e8e288', text: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-800' },
-  disputed:   { label: 'Disputed',   fill: '#de1a1a', text: 'text-red-500',    badge: 'bg-red-100 text-red-800' },
-  inactive:   { label: 'Inactive',   fill: '#9ca3af', text: 'text-gray-500',   badge: 'bg-gray-100 text-gray-600' },
-  resolved:   { label: 'Resolved',   fill: '#7dce82', text: 'text-green-500',  badge: 'bg-green-100 text-green-800' },
+  '':         { label: 'Unresolved', definition: 'Abandonment issues are ongoing.',                                                              fill: '#e8e288', text: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-800' },
+  disputed:   { label: 'Disputed',   definition: 'There is uncertainty or disagreement over the resolution status.',                             fill: '#de1a1a', text: 'text-red-500',    badge: 'bg-red-100 text-red-800' },
+  inactive:   { label: 'Inactive',   definition: 'These cases are no longer active but remain unresolved.',                                      fill: '#9ca3af', text: 'text-gray-500',   badge: 'bg-gray-100 text-gray-600' },
+  resolved:   { label: 'Resolved',   definition: 'The crew has been repatriated, and all wages and entitlements have been paid.',                fill: '#7dce82', text: 'text-green-500',  badge: 'bg-green-100 text-green-800' },
 };
 
 export function statusColor(status) {
