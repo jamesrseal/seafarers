@@ -209,11 +209,22 @@ function extractApexFields() {
 }
 
 // ---------------------------------------------------------------------------
-// Scrape one page — throws on network/timeout error, returns null for empty page
+// Scrape one page — throws on network/timeout/HTTP-5xx/429 error (retriable),
+// returns null for a genuinely empty page (200 with no record)
 // ---------------------------------------------------------------------------
 async function scrapeOne(page, id, portOverrides, flagUrls) {
   const url = `${BASE_URL}?p3_abandonment_id=${id}`;
-  await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+  const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+
+  // page.goto resolves even on HTTP error statuses, so a Cloudflare 502/503/504
+  // (ILO origin down) or 429 (rate limited) would otherwise be parsed as a page
+  // with no form fields and silently counted as an empty record. Treat these as
+  // retriable errors so scrapeWithRetry backs off and retries instead.
+  const status = response ? response.status() : 0;
+  if (status === 0 || status === 429 || status >= 500) {
+    throw new Error(`HTTP ${status || 'no response'} — server/gateway error`);
+  }
+
   const fields = await page.evaluate(extractApexFields);
 
   if (!fields) return null;
