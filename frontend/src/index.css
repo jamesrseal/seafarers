@@ -28,6 +28,12 @@ input[type="date"] {
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  /* appearance:none drops the native control's height (iOS collapses the empty
+     field; desktop WebKit makes it too tall). Pin the height with border-box so
+     it exactly matches the text inputs across engines:
+     line-height 1.25rem + py-1.5 (0.75rem) + 1px borders = 2.125rem (34px). */
+  line-height: 1.25rem;
+  height: 2.125rem;
 }
 input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
