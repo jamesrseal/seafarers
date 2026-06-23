@@ -15,3 +15,20 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* iOS Safari renders date inputs with their native control sizing: it adds
+   the field padding on top of width:100% (content-box) and gives them an
+   intrinsic width, so they overflow past the other form fields' right edge.
+   Reset the appearance and pin the box model so they fill — but never exceed —
+   their container, exactly like every other input. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
