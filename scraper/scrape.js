@@ -13,9 +13,16 @@
  *   --rescan-open Re-scrapes every Unresolved and Disputed record already in the DB to
  *                 pick up status changes. Run periodically alongside the default scan.
  *
+ * Flags:
+ *   --force       Ingest even if the pre-ingest sanity guard fails (use when a
+ *                 large drop in record count or field fill-rate is legitimate).
+ *
  * Robustness:
  *   Each page is retried up to MAX_RETRIES times with exponential backoff before
  *                 being skipped, preventing transient network errors from causing gaps.
+ *   Before ingesting, a sanity guard compares the run to the current snapshot and
+ *                 refuses to overwrite good data if the scrape looks broken (0 records,
+ *                 record count cratered, or a monitored field's fill-rate collapsed).
  *
  * First run:
  *   npm install
@@ -39,6 +46,7 @@ function getArg(flag, fallback) {
 function hasFlag(flag) { return args.includes(flag); }
 
 const RESCAN_OPEN  = hasFlag('--rescan-open');
+const FORCE        = hasFlag('--force'); // bypass the pre-ingest sanity guard
 const START        = parseInt(getArg('--start', '1'), 10);
 const END          = parseInt(getArg('--end', '1705'), 10);
 const API_URL      = getArg('--api', 'http://localhost:3001');
@@ -47,6 +55,16 @@ const CONCURRENCY  = parseInt(getArg('--concurrency', '5'), 10);
 const MAX_RETRIES        = 3;
 const RETRY_BASE_MS      = 3000;
 const EMPTY_STREAK_LIMIT = 30; // auto-extend stops after this many consecutive empty pages
+
+// Pre-ingest sanity guard thresholds. A scrape that silently breaks (server
+// outage → 0 records; a changed selector → a field blanks out) must not be
+// allowed to overwrite good data. These bounds decide when a run looks broken.
+const COUNT_FLOOR_RATIO = 0.5; // range scan must return ≥50% of the previous record count
+const FILL_MIN_PREV     = 0.5; // only monitor fields populated on >50% of previous records
+const FILL_DROP_RATIO   = 0.5; // …and flag them if their fill-rate drops below half its prior value
+// Fields expected to be populated on essentially every record regardless of
+// status or subset — a collapse here means a broken selector, not real data.
+const MONITORED_FIELDS  = ['ship_name', 'port_of_abandonment', 'comments'];
 
 const BASE_URL = 'https://wwwex.ilo.org/dyn/r/abandonment/seafarers/details';
 
@@ -183,6 +201,18 @@ function extractApexFields() {
     const el = document.querySelector(selector);
     return el ? (el.innerText || el.textContent || '').trim() : null;
   }
+  // The "Comments and observations" content lives in an APEX region whose
+  // generated id (e.g. #R...) changes whenever ILO rebuilds the app. Locate it
+  // by its visible region title instead of a hardcoded id, then read the
+  // dynamic-content body inside it — far more resilient to redeploys.
+  function commentsText() {
+    const title = [...document.querySelectorAll('.t-Region-title, h2')]
+      .find(h => /comments and observations/i.test(h.innerText || ''));
+    if (!title) return '';
+    const region = title.closest('.t-Region');
+    const dyn = region && region.querySelector('a-dynamic-content, .a-dynamic-content');
+    return dyn ? (dyn.innerText || dyn.textContent || '').trim() : '';
+  }
 
   const shipName = val('P3_SHIP_NAME');
   if (!shipName) return null;
@@ -203,7 +233,7 @@ function extractApexFields() {
     reporting_member:    val('P3_REPORTING') || '',
     num_seafarers:       parseInt(val('P3_SEAFARERS_NUMBER') || '', 10) || null,
     circumstances:       val('P3_CIRCUMSTANCES') || '',
-    comments:            txt('#R871520703199102648 a-dynamic-content') || '',
+    comments:            commentsText(),
     vessel_finder_url:   imo ? `https://www.vesselfinder.com/?imo=${imo}` : null,
   };
 }
@@ -348,6 +378,65 @@ async function getOpenIds() {
 }
 
 // ---------------------------------------------------------------------------
+// Pre-ingest sanity guard — refuse to overwrite good data with a broken scrape
+// ---------------------------------------------------------------------------
+function fillRate(records, field) {
+  if (!records.length) return 0;
+  const filled = records.filter(r => {
+    const v = r[field];
+    return v !== null && v !== undefined && String(v).trim() !== '';
+  }).length;
+  return filled / records.length;
+}
+
+// Fetch the current latest snapshot to compare against. Returns [] if the API
+// is unreachable or empty (e.g. a genuine first run) so the guard degrades to
+// the 0-records check only rather than blocking on a missing baseline.
+async function fetchPreviousSnapshot() {
+  try {
+    const ships = await fetchJson(`${API_URL}/api/ships`);
+    return Array.isArray(ships) ? ships : [];
+  } catch {
+    return [];
+  }
+}
+
+// Returns { ok, reasons }. ok=false means the run looks broken and must not be
+// ingested (unless --force). prev is the previous snapshot (may be empty).
+function sanityCheck(records, prev) {
+  const reasons = [];
+
+  // A scrape that produced nothing is always broken — catches total failures
+  // (server down, route/param renamed) even with no baseline to compare to.
+  if (records.length === 0) {
+    return { ok: false, reasons: ['scrape produced 0 records'] };
+  }
+
+  // Record-count floor. Skipped for rescan-open, which intentionally scrapes
+  // only the open-case subset and would always fall short of the full snapshot.
+  if (!RESCAN_OPEN && prev.length) {
+    const floor = Math.floor(prev.length * COUNT_FLOOR_RATIO);
+    if (records.length < floor) {
+      reasons.push(`record count ${records.length} < ${Math.round(COUNT_FLOOR_RATIO * 100)}% of previous snapshot (${prev.length}, floor ${floor})`);
+    }
+  }
+
+  // Per-field fill-rate collapse — catches a selector that broke and silently
+  // blanked a field (the "Comments and observations" region-id change).
+  if (prev.length) {
+    for (const f of MONITORED_FIELDS) {
+      const prevRate = fillRate(prev, f);
+      const newRate  = fillRate(records, f);
+      if (prevRate >= FILL_MIN_PREV && newRate < prevRate * FILL_DROP_RATIO) {
+        reasons.push(`field "${f}" fill-rate collapsed: ${(prevRate * 100).toFixed(0)}% → ${(newRate * 100).toFixed(0)}%`);
+      }
+    }
+  }
+
+  return { ok: reasons.length === 0, reasons };
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
@@ -375,7 +464,27 @@ async function main() {
 
   await browser.close();
 
-  console.log(`\nScraped ${records.length} records. Posting to ${API_URL}/api/scrapes/ingest …`);
+  console.log(`\nScraped ${records.length} records.`);
+
+  // Guard: don't let a broken scrape overwrite good data. Compare against the
+  // current snapshot and bail (saving the raw scrape) if the run looks broken.
+  const prev  = await fetchPreviousSnapshot();
+  const check = sanityCheck(records, prev);
+  if (!check.ok) {
+    const out = path.join(__dirname, `scraped_${scrapedAt.slice(0, 10)}.json`);
+    fs.writeFileSync(out, JSON.stringify({ scraped_at: scrapedAt, ships: records }, null, 2));
+    if (!FORCE) {
+      console.error('\n❌ SANITY CHECK FAILED — not ingesting. The scrape looks broken:');
+      for (const r of check.reasons) console.error(`   • ${r}`);
+      console.error(`\nRaw scrape saved to ${out}`);
+      console.error('If this change is legitimate, re-run with --force to ingest anyway.');
+      process.exit(1);
+    }
+    console.warn('\n⚠️  Sanity check failed but --force given — ingesting anyway:');
+    for (const r of check.reasons) console.warn(`   • ${r}`);
+  }
+
+  console.log(`Posting to ${API_URL}/api/scrapes/ingest …`);
   try {
     const res = await postJson(`${API_URL}/api/scrapes/ingest`, { scraped_at: scrapedAt, ships: records });
     console.log(`Ingest response (${res.status}):`, res.body);
