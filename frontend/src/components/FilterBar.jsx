@@ -20,12 +20,6 @@ function portCountry(port) {
   return parts.length > 1 ? parts[parts.length - 1].trim() : null;
 }
 
-const EMPTY = { status: '', flag: '', port: '', country: '', q: '' };
-
-function derived(ships, key) {
-  return [...new Set(ships.map(s => s[key]).filter(Boolean))].sort();
-}
-
 const STATUS_LABELS = { '': 'Unresolved', disputed: 'Disputed', inactive: 'Inactive', resolved: 'Resolved' };
 
 function selectClass(active, full = false) {
@@ -45,33 +39,28 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
   const hasFilter = Object.values(filters).some(Boolean);
   const activeCount = Object.values(filters).filter(Boolean).length;
 
-  const visibleFlags = (() => {
-    const base = hasFilter ? ships : null;
-    const known = base ? derived(base, 'flag') : options.flags.filter(f => f !== 'Unknown');
-    const hasUnknown = base ? base.some(s => !s.flag) : options.flags.includes('Unknown');
-    return [...known, ...(hasUnknown ? ['Unknown'] : [])];
-  })();
-  const visiblePorts = hasFilter
-    ? derived(ships, 'port_of_abandonment')
-    : filters.country
-      ? options.ports.filter(p => portCountry(p) === filters.country)
-      : options.ports;
-  const visibleCountries = hasFilter
-    ? [...new Set(derived(ships, 'port_of_abandonment').map(portCountry).filter(Boolean))].sort()
-    : (options.countries ?? []);
-  // NB: don't use derived() here — it drops falsy values, and the Unresolved
-  // status is the empty string "". That would remove the Unresolved option
-  // while it's selected, leaving the <select> with a value no option matches:
-  // the browser then shows "All" as already-selected, so clicking All fires no
-  // change event and the user is stuck (must Reset). Keep "" in the list.
-  const visibleStatuses = hasFilter
-    ? ['', 'disputed', 'inactive', 'resolved'].filter(s => ships.some(sh => (sh.ship_status ?? '') === s))
-    : options.statuses;
+  // Filters combine (status AND flag AND port/country AND search), so the
+  // dropdowns draw from the full snapshot via /filters — every value stays
+  // selectable regardless of the other selections, which also avoids a selected
+  // value vanishing from its own narrowed list. The one narrowing kept is
+  // country -> port, a containment relationship that's always valid.
+  const visibleFlags = options.flags;
+  const visiblePorts = filters.country
+    ? options.ports.filter(p => portCountry(p) === filters.country)
+    : options.ports;
+  const visibleCountries = options.countries ?? [];
+  const visibleStatuses = options.statuses;
 
   function set(key) {
     return (e) => {
       const value = e.target.value;
-      setFilters(value ? { ...EMPTY, [key]: value } : { ...EMPTY });
+      // Merge so filters stack instead of replacing each other. Port and country
+      // are hierarchical and the API treats port as the more specific of the
+      // two, so keep them from contradicting each other.
+      const next = { ...filters, [key]: value };
+      if (key === 'country') next.port = '';
+      if (key === 'port') next.country = '';
+      setFilters(next);
     };
   }
 
