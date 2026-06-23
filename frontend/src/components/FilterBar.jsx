@@ -59,7 +59,14 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
   const visibleCountries = hasFilter
     ? [...new Set(derived(ships, 'port_of_abandonment').map(portCountry).filter(Boolean))].sort()
     : (options.countries ?? []);
-  const visibleStatuses = hasFilter ? derived(ships, 'ship_status') : options.statuses;
+  // NB: don't use derived() here — it drops falsy values, and the Unresolved
+  // status is the empty string "". That would remove the Unresolved option
+  // while it's selected, leaving the <select> with a value no option matches:
+  // the browser then shows "All" as already-selected, so clicking All fires no
+  // change event and the user is stuck (must Reset). Keep "" in the list.
+  const visibleStatuses = hasFilter
+    ? ['', 'disputed', 'inactive', 'resolved'].filter(s => ships.some(sh => (sh.ship_status ?? '') === s))
+    : options.statuses;
 
   function set(key) {
     return (e) => {
