@@ -23,8 +23,12 @@ const EMPTY = {
 function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {hint && <p className="text-xs text-gray-400 mb-1">{hint}</p>}
+      {/* Hint sits inline beside the label so it doesn't add a line and push the
+          input down, which would misalign it with adjacent fields. */}
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+        {hint && <span className="ml-2 font-normal text-xs text-gray-400">{hint}</span>}
+      </label>
       {children}
     </div>
   );
