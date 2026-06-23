@@ -1,4 +1,18 @@
 import { useState } from 'react';
+import { downloadShipsCsv } from '../utils/exportCsv';
+
+function ExportButton({ ships, className }) {
+  return (
+    <button
+      onClick={() => downloadShipsCsv(ships)}
+      disabled={!ships.length}
+      title="Download the current results as CSV"
+      className={className}
+    >
+      Export CSV
+    </button>
+  );
+}
 
 function portCountry(port) {
   if (!port) return null;
@@ -120,6 +134,10 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
           {filterInputs(false)}
           <div className="flex items-end gap-3 ml-auto">
             <span className="text-sm text-gray-500 pb-1.5">{total} records</span>
+            <ExportButton
+              ships={ships}
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
+            />
             {hasFilter && (
               <button
                 onClick={onClearAll}
@@ -194,6 +212,10 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
                 </button>
               )}
             </div>
+            <ExportButton
+              ships={ships}
+              className="w-full py-2.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            />
           </div>
         </div>
       )}

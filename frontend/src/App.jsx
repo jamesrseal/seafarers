@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import Map from './components/Map';
@@ -7,17 +7,39 @@ import ShipDetail from './components/ShipDetail';
 import Dashboard from './components/Dashboard';
 import ReportForm from './components/ReportForm';
 import { useShips, useFilters } from './hooks/useShips';
+import { readStateFromUrl, writeStateToUrl, EMPTY_FILTERS } from './utils/urlState';
 
-const EMPTY_FILTERS = { status: '', flag: '', port: '', country: '', q: '' };
+const VIEWS = [
+  ['map', 'Map', 'Map'],
+  ['split', 'Map + Table', 'Split'],
+  ['table', 'Table', 'Table'],
+  ['dashboard', 'Dashboard', 'Stats'],
+  ['report', 'Report Seafarer Abandonment', 'Report'],
+];
 
 export default function App() {
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const initial = readStateFromUrl();
+  const [filters, setFilters] = useState(initial.filters);
   const [selectedShip, setSelectedShip] = useState(null);
   const [highlightedShip, setHighlightedShip] = useState(null);
-  const [view, setView] = useState('map');
+  const [view, setView] = useState(initial.view);
 
-  const { ships, loading } = useShips(filters);
+  const { ships, loading, error } = useShips(filters);
   const filterOptions = useFilters();
+
+  // Deep link: if the URL names a ship, load it and open its detail on mount.
+  useEffect(() => {
+    if (!initial.ship) return;
+    fetch(`/api/ships/${initial.ship}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(ship => { if (ship) setSelectedShip(ship); })
+      .catch(() => {});
+  }, []);
+
+  // Keep the address bar in sync so every view is a shareable link.
+  useEffect(() => {
+    writeStateToUrl({ filters, view, ship: selectedShip?.abandonment_id });
+  }, [filters, view, selectedShip]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -35,16 +57,18 @@ export default function App() {
         }}
       />}
 
-      {/* View toggle */}
-      <div className="bg-white border-b border-gray-200 px-6 py-1.5">
-        <div className="max-w-7xl mx-auto flex gap-2">
-          {[['map', 'Map'], ['split', 'Map + Table'], ['table', 'Table'], ['dashboard', 'Dashboard'], ['report', 'Report Seafarer Abandonment']].map(([v, label]) => (
+      {/* View toggle — horizontally scrollable on small screens */}
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-1.5">
+        <div className="max-w-7xl mx-auto flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
+          {VIEWS.map(([v, label, shortLabel]) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`text-xs px-3 py-1 rounded ${view === v ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+              aria-current={view === v}
+              className={`text-xs px-3 py-1 rounded shrink-0 ${view === v ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
-              {label}
+              <span className="sm:hidden">{shortLabel}</span>
+              <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>
@@ -54,17 +78,28 @@ export default function App() {
         <ReportForm />
       ) : view === 'dashboard' ? (
         <Dashboard />
+      ) : error ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 gap-3">
+          <p className="text-gray-600">Couldn’t load the data.</p>
+          <p className="text-xs text-gray-400">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
       ) : loading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400">Loading…</div>
       ) : (
-        <div className={`flex-1 overflow-hidden flex ${view === 'table' ? 'flex-col' : 'flex-row'}`}>
+        <div className={`flex-1 overflow-hidden flex ${view === 'table' ? 'flex-col' : view === 'split' ? 'flex-col sm:flex-row' : 'flex-row'}`}>
           {view !== 'table' && (
-            <div className={view === 'split' ? 'flex-1' : 'flex-1'}>
+            <div className={view === 'split' ? 'flex-1 min-h-0' : 'flex-1'}>
               <Map ships={ships} onSelect={setSelectedShip} highlighted={highlightedShip} view={view} portFilter={filters.port} countryFilter={filters.country} />
             </div>
           )}
           {view !== 'map' && (
-            <div className={`${view === 'split' ? 'w-1/2 border-l border-gray-200' : 'flex-1'} overflow-hidden`}>
+            <div className={`${view === 'split' ? 'sm:w-1/2 flex-1 min-h-0 border-t sm:border-t-0 sm:border-l border-gray-200' : 'flex-1'} overflow-hidden`}>
               <ShipTable
                 ships={ships}
                 onSelect={(ship) => { setHighlightedShip(ship); if (ship) setView('split'); }}

@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
+import { shipShareUrl } from '../utils/urlState';
 
 const MONTHS = {
   january:0, february:1, march:2, april:3, may:4, june:5,
@@ -37,6 +39,36 @@ function parseComments(comments) {
     .sort((a, b) => b.ts - a.ts);
 }
 
+function ShareButton({ ship }) {
+  const [copied, setCopied] = useState(false);
+
+  async function share() {
+    const url = shipShareUrl(ship.abandonment_id);
+    const title = `${ship.ship_name} — Abandoned Seafarers`;
+    if (navigator.share) {
+      try { await navigator.share({ title, url }); return; } catch { /* cancelled — fall through to copy */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked — nothing we can do */ }
+  }
+
+  return (
+    <button
+      onClick={share}
+      aria-label="Share link to this case"
+      className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200 inline-flex items-center gap-1.5"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.7 10.7a3 3 0 100 2.6m0-2.6l6.6-3.9m-6.6 6.5l6.6 3.9m0 0a3 3 0 105.2 1.8 3 3 0 00-5.2-1.8zm0-10.4a3 3 0 105.2-1.8 3 3 0 00-5.2 1.8z" />
+      </svg>
+      {copied ? 'Link copied!' : 'Share'}
+    </button>
+  );
+}
+
 export default function ShipDetail({ ship, onClose }) {
   if (!ship) return null;
   const { badge, definition } = statusColor(ship.ship_status);
@@ -56,24 +88,23 @@ export default function ShipDetail({ ship, onClose }) {
                 {statusLabel(ship.ship_status)}
               </span>
             </div>
-            <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <button onClick={onClose} aria-label="Close" className="shrink-0 text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
           </div>
-          {(ship.ilo_url || ship.vessel_finder_url) && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {ship.ilo_url && (
-                <a href={ship.ilo_url} target="_blank" rel="noreferrer"
-                  className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  ILO Record
-                </a>
-              )}
-              {ship.vessel_finder_url && (
-                <a href={ship.vessel_finder_url} target="_blank" rel="noreferrer"
-                  className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
-                  VesselFinder
-                </a>
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {ship.ilo_url && (
+              <a href={ship.ilo_url} target="_blank" rel="noreferrer"
+                className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                ILO Record
+              </a>
+            )}
+            {ship.vessel_finder_url && (
+              <a href={ship.vessel_finder_url} target="_blank" rel="noreferrer"
+                className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
+                VesselFinder
+              </a>
+            )}
+            <ShareButton ship={ship} />
+          </div>
         </div>
 
         <dl className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">

@@ -6,3 +6,12 @@
 .leaflet-container {
   background: #a8c8e8;
 }
+
+/* Hide the scrollbar on the horizontally-scrollable view-toggle row */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
