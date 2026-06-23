@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
 import { shipShareUrl } from '../utils/urlState';
+import { formatIloDate } from '../utils/formatDate';
 
 const MONTHS = {
   january:0, february:1, march:2, april:3, may:4, june:5,
@@ -118,8 +119,8 @@ export default function ShipDetail({ ship, onClose }) {
           } />
           <Field label="Fishing Vessel" value={ship.fishing_vessel ? 'Yes' : 'No'} />
           <Field label="Port of Abandonment" value={ship.port_of_abandonment} full />
-          <Field label="Abandonment Date" value={ship.abandonment_date} />
-          <Field label="Notification Date" value={ship.notification_date} />
+          <Field label="Abandonment Date" value={formatIloDate(ship.abandonment_date)} />
+          <Field label="Notification Date" value={formatIloDate(ship.notification_date)} />
           <Field label="Last Activity" value={ship.last_activity_date ?? '—'} />
           <Field label="Seafarers" value={ship.num_seafarers} />
           <Field label="Reporting Org." value={ship.reporting_member} full />

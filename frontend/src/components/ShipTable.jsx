@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-table';
 import { useState, useMemo, useEffect } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
+import { formatIloDate } from '../utils/formatDate';
 
 const MONTHS = {
   january:1, february:2, march:3, april:4, may:5, june:6,
@@ -48,6 +49,7 @@ const COLUMNS = [
     accessorKey: 'abandonment_date',
     header: 'Abandonment Date',
     sortingFn: (a, b, col) => parseDateForSort(a.getValue(col)) - parseDateForSort(b.getValue(col)),
+    cell: ({ getValue }) => formatIloDate(getValue()) || <span className="text-gray-400">—</span>,
   },
   {
     accessorKey: 'last_activity_date',
