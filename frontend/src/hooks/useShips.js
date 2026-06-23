@@ -1,26 +1,49 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+
+// Debounce a fast-changing value (used for the free-text search box).
+function useDebounced(value, ms) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return debounced;
+}
 
 export function useShips(filters) {
   const [ships, setShips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchShips = useCallback(() => {
+  // Debounce only the search term so typing doesn't fire a request per
+  // keystroke; dropdown filters still apply immediately.
+  const debouncedQ = useDebounced(filters.q, 300);
+
+  useEffect(() => {
+    // Abort the previous request when filters change so a slow, stale response
+    // can't land after a newer one and overwrite the displayed results.
+    const controller = new AbortController();
     setLoading(true);
+    setError(null);
+
     const params = new URLSearchParams();
     if (filters.status)  params.set('status', filters.status);
     if (filters.flag)    params.set('flag', filters.flag);
     if (filters.port)    params.set('port', filters.port);
     if (filters.country) params.set('country', filters.country);
-    if (filters.q)       params.set('q', filters.q);
+    if (debouncedQ)      params.set('q', debouncedQ);
 
-    fetch(`/api/ships?${params}`)
-      .then(r => r.json())
+    fetch(`/api/ships?${params}`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(data => { setShips(data); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
-  }, [filters.status, filters.flag, filters.port, filters.country, filters.q]);
+      .catch(err => {
+        if (err.name === 'AbortError') return; // superseded by a newer request
+        setError(err.message);
+        setLoading(false);
+      });
 
-  useEffect(() => { fetchShips(); }, [fetchShips]);
+    return () => controller.abort();
+  }, [filters.status, filters.flag, filters.port, filters.country, debouncedQ]);
 
   return { ships, loading, error };
 }

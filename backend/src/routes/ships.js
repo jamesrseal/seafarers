@@ -39,7 +39,14 @@ router.get('/', (req, res) => {
     params.push(like, like, like);
   }
 
-  const ships = db.prepare(`SELECT * FROM ships ${where} ORDER BY abandonment_date DESC`).all(...params);
+  // abandonment_date is free text ("September 2010", "2 July 2014"), so ordering
+  // by it sorts alphabetically, not chronologically. Order by the most recent
+  // activity (ISO dates, NULLs last) and break ties by newest case id — case
+  // ids are assigned sequentially, so higher id ≈ more recently added.
+  const ships = db.prepare(
+    `SELECT * FROM ships ${where}
+     ORDER BY last_activity_date DESC, CAST(abandonment_id AS INTEGER) DESC`
+  ).all(...params);
   res.json(ships);
 });
 

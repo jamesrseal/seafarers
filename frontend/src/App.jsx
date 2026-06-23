@@ -23,6 +23,9 @@ export default function App() {
   const [selectedShip, setSelectedShip] = useState(null);
   const [highlightedShip, setHighlightedShip] = useState(null);
   const [view, setView] = useState(initial.view);
+  // Holds the deep-linked ship id until its detail has loaded, so the URL keeps
+  // ?ship=N during the fetch instead of momentarily dropping it.
+  const [pendingShip, setPendingShip] = useState(initial.ship);
 
   const { ships, loading, error } = useShips(filters);
   const filterOptions = useFilters();
@@ -32,14 +35,16 @@ export default function App() {
     if (!initial.ship) return;
     fetch(`/api/ships/${initial.ship}`)
       .then(r => (r.ok ? r.json() : null))
-      .then(ship => { if (ship) setSelectedShip(ship); })
-      .catch(() => {});
+      // Don't clobber a ship the user opened manually before the fetch resolved.
+      .then(ship => { if (ship) setSelectedShip(prev => prev ?? ship); })
+      .catch(() => {})
+      .finally(() => setPendingShip(null));
   }, []);
 
   // Keep the address bar in sync so every view is a shareable link.
   useEffect(() => {
-    writeStateToUrl({ filters, view, ship: selectedShip?.abandonment_id });
-  }, [filters, view, selectedShip]);
+    writeStateToUrl({ filters, view, ship: selectedShip?.abandonment_id ?? pendingShip });
+  }, [filters, view, selectedShip, pendingShip]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
