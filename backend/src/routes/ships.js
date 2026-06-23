@@ -120,28 +120,6 @@ router.get('/facets', (req, res) => {
   });
 });
 
-// Filter option lists (for dropdowns) — derived from latest snapshot
-router.get('/filters', (req, res) => {
-  const latestWhere = `
-    WHERE scraped_at = (
-      SELECT MAX(s2.scraped_at) FROM ships s2 WHERE s2.abandonment_id = ships.abandonment_id
-    )
-  `;
-  const STATUS_LABELS = { '': 'Unresolved', disputed: 'Disputed', inactive: 'Inactive', resolved: 'Resolved' };
-  const statuses = db.prepare(`SELECT DISTINCT ship_status FROM ships ${latestWhere} ORDER BY ship_status`).all()
-    .map(r => STATUS_LABELS[r.ship_status] ?? r.ship_status)
-    .filter(Boolean);
-  const flagRows = db.prepare(`SELECT DISTINCT flag FROM ships ${latestWhere} ORDER BY flag`).all().map(r => r.flag);
-  const hasUnknownFlag = flagRows.some(f => !f);
-  const flags = [...flagRows.filter(Boolean), ...(hasUnknownFlag ? ['Unknown'] : [])];
-  const ports = db.prepare(`SELECT DISTINCT port_of_abandonment FROM ships ${latestWhere} ORDER BY port_of_abandonment`).all().map(r => r.port_of_abandonment).filter(Boolean);
-  const countries = [...new Set(ports.map(p => {
-    const parts = p.split(',');
-    return parts.length > 1 ? parts[parts.length - 1].trim() : null;
-  }).filter(Boolean))].sort();
-  res.json({ statuses, flags, ports, countries });
-});
-
 // Single ship — latest
 router.get('/:abandonment_id', (req, res) => {
   const ship = db.prepare(
