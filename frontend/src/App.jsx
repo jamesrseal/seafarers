@@ -6,7 +6,7 @@ import ShipTable from './components/ShipTable';
 import ShipDetail from './components/ShipDetail';
 import Dashboard from './components/Dashboard';
 import ReportForm from './components/ReportForm';
-import { useShips, useFilters } from './hooks/useShips';
+import { useShips, useFacets } from './hooks/useShips';
 import { readStateFromUrl, writeStateToUrl, EMPTY_FILTERS } from './utils/urlState';
 
 const VIEWS = [
@@ -28,7 +28,7 @@ export default function App() {
   const [pendingShip, setPendingShip] = useState(initial.ship);
 
   const { ships, loading, error } = useShips(filters);
-  const filterOptions = useFilters();
+  const facets = useFacets(filters);
 
   // Deep link: if the URL names a ship, load it and open its detail on mount.
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function App() {
         filters={filters}
         setFilters={(f) => { setFilters(f); setHighlightedShip(null); }}
         ships={ships}
-        options={filterOptions}
+        facets={facets}
         total={ships.length}
         onClearAll={() => {
           setFilters(EMPTY_FILTERS);

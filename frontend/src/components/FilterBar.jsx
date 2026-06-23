@@ -14,13 +14,19 @@ function ExportButton({ ships, className }) {
   );
 }
 
-function portCountry(port) {
-  if (!port) return null;
-  const parts = port.split(',');
-  return parts.length > 1 ? parts[parts.length - 1].trim() : null;
+// Build a facet's <option> data: each still-available value with its count.
+// Keep the active value selectable even if it dropped to 0 under the other
+// filters — otherwise the controlled <select> would have no matching option
+// (the trap that previously froze the Status filter on Unresolved).
+function facetOptions(facet, selected) {
+  const values = facet.values;
+  if (selected && !values.some(v => v.value === selected)) {
+    return [...values, { value: selected, count: 0 }];
+  }
+  return values;
 }
 
-const STATUS_LABELS = { '': 'Unresolved', disputed: 'Disputed', inactive: 'Inactive', resolved: 'Resolved' };
+const withCount = (label, count) => `${label} (${count.toLocaleString()})`;
 
 function selectClass(active, full = false) {
   return `${full ? 'w-full' : 'w-40'} border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${
@@ -34,22 +40,15 @@ function inputClass(active, full = false) {
   }`;
 }
 
-export default function FilterBar({ filters, setFilters, ships, options, total, onClearAll }) {
+export default function FilterBar({ filters, setFilters, ships, facets, total, onClearAll }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const hasFilter = Object.values(filters).some(Boolean);
   const activeCount = Object.values(filters).filter(Boolean).length;
 
-  // Filters combine (status AND flag AND port/country AND search), so the
-  // dropdowns draw from the full snapshot via /filters — every value stays
-  // selectable regardless of the other selections, which also avoids a selected
-  // value vanishing from its own narrowed list. The one narrowing kept is
-  // country -> port, a containment relationship that's always valid.
-  const visibleFlags = options.flags;
-  const visiblePorts = filters.country
-    ? options.ports.filter(p => portCountry(p) === filters.country)
-    : options.ports;
-  const visibleCountries = options.countries ?? [];
-  const visibleStatuses = options.statuses;
+  // Filters combine (status AND flag AND port/country AND search). The dropdown
+  // options and counts come from /api/ships/facets, computed for each facet from
+  // the OTHER active filters, so each list shows only what's still available
+  // (and "All" shows the total with that facet removed).
 
   function set(key) {
     return (e) => {
@@ -82,9 +81,9 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Status</label>
           <select value={filters.status} onChange={set('status')} className={selectClass(!!filters.status, full)}>
-            <option value="">All</option>
-            {visibleStatuses.map(s => (
-              <option key={s} value={STATUS_LABELS[s] ?? s}>{STATUS_LABELS[s] ?? s}</option>
+            <option value="">{withCount('All', facets.status.total)}</option>
+            {facetOptions(facets.status, filters.status).map(({ value, count }) => (
+              <option key={value} value={value}>{withCount(value, count)}</option>
             ))}
           </select>
         </div>
@@ -92,9 +91,9 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Flag</label>
           <select value={filters.flag} onChange={set('flag')} className={selectClass(!!filters.flag, full)}>
-            <option value="">All</option>
-            {visibleFlags.map(f => (
-              <option key={f} value={f}>{f}</option>
+            <option value="">{withCount('All', facets.flag.total)}</option>
+            {facetOptions(facets.flag, filters.flag).map(({ value, count }) => (
+              <option key={value} value={value}>{withCount(value, count)}</option>
             ))}
           </select>
         </div>
@@ -102,9 +101,9 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Country of abandonment</label>
           <select value={filters.country} onChange={set('country')} className={selectClass(!!filters.country, full)}>
-            <option value="">All</option>
-            {visibleCountries.map(c => (
-              <option key={c} value={c}>{c}</option>
+            <option value="">{withCount('All', facets.country.total)}</option>
+            {facetOptions(facets.country, filters.country).map(({ value, count }) => (
+              <option key={value} value={value}>{withCount(value, count)}</option>
             ))}
           </select>
         </div>
@@ -112,9 +111,9 @@ export default function FilterBar({ filters, setFilters, ships, options, total, 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Port</label>
           <select value={filters.port} onChange={set('port')} className={selectClass(!!filters.port, full)}>
-            <option value="">All</option>
-            {visiblePorts.map(p => (
-              <option key={p} value={p}>{p}</option>
+            <option value="">{withCount('All', facets.port.total)}</option>
+            {facetOptions(facets.port, filters.port).map(({ value, count }) => (
+              <option key={value} value={value}>{withCount(value, count)}</option>
             ))}
           </select>
         </div>

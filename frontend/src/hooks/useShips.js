@@ -48,15 +48,36 @@ export function useShips(filters) {
   return { ships, loading, error };
 }
 
-export function useFilters() {
-  const [options, setOptions] = useState({ statuses: [], flags: [], ports: [], countries: [] });
+const EMPTY_FACETS = {
+  status:  { total: 0, values: [] },
+  flag:    { total: 0, values: [] },
+  country: { total: 0, values: [] },
+  port:    { total: 0, values: [] },
+};
+
+// Faceted option lists with result counts. Recomputed whenever filters change;
+// each facet reflects the other active filters (see /api/ships/facets). Keeps
+// the previous result during a refetch so counts don't flicker while typing.
+export function useFacets(filters) {
+  const [facets, setFacets] = useState(EMPTY_FACETS);
+  const debouncedQ = useDebounced(filters.q, 300);
 
   useEffect(() => {
-    fetch('/api/ships/filters')
-      .then(r => r.json())
-      .then(setOptions)
-      .catch(() => {});
-  }, []);
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (filters.status)  params.set('status', filters.status);
+    if (filters.flag)    params.set('flag', filters.flag);
+    if (filters.port)    params.set('port', filters.port);
+    if (filters.country) params.set('country', filters.country);
+    if (debouncedQ)      params.set('q', debouncedQ);
 
-  return options;
+    fetch(`/api/ships/facets?${params}`, { signal: controller.signal })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (data) setFacets(data); })
+      .catch(() => {}); // AbortError or fetch failure — keep the last facets
+
+    return () => controller.abort();
+  }, [filters.status, filters.flag, filters.port, filters.country, debouncedQ]);
+
+  return facets;
 }
