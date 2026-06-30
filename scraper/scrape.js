@@ -34,6 +34,7 @@ const https = require('https');
 const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
+const { geocode, loadPortOverrides } = require('./geocode');
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -69,23 +70,8 @@ const MONITORED_FIELDS  = ['ship_name', 'port_of_abandonment', 'comments'];
 const BASE_URL = 'https://wwwex.ilo.org/dyn/r/abandonment/seafarers/details';
 
 // ---------------------------------------------------------------------------
-// Support data loaders
+// Support data loaders  (port geocoding/overrides live in ./geocode)
 // ---------------------------------------------------------------------------
-function loadPortOverrides() {
-  const csv = path.join(__dirname, 'cleaned_ports_list.csv');
-  if (!fs.existsSync(csv)) return {};
-  const lines = fs.readFileSync(csv, 'utf8').split('\n');
-  const overrides = {};
-  for (const line of lines.slice(1)) {
-    const parts = line.split('~');
-    if (parts.length >= 3) {
-      const [port, lat, lon] = parts;
-      if (port && lat && lon) overrides[port.trim()] = { lat: parseFloat(lat), lon: parseFloat(lon) };
-    }
-  }
-  return overrides;
-}
-
 function loadFlagUrls() {
   const csv = path.join(__dirname, 'flag_urls.csv');
   if (!fs.existsSync(csv)) return {};
@@ -102,31 +88,6 @@ function loadFlagUrls() {
     if (country && url) flags[country] = url;
   }
   return flags;
-}
-
-// ---------------------------------------------------------------------------
-// Geocoding via Nominatim (OSM) — rate-limited to 1 req/s
-// ---------------------------------------------------------------------------
-const geocache = new Map();
-
-async function geocode(port, overrides) {
-  if (!port) return { lat: null, lon: null };
-  if (overrides[port]) return overrides[port];
-  if (geocache.has(port)) return geocache.get(port);
-
-  await sleep(1200);
-  try {
-    const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(port)}&format=json&limit=1`;
-    const body = await fetchJson(url, { 'User-Agent': 'seafarers_scraper/2.0 (james@daremightydata.com)' });
-    if (body && body.length > 0) {
-      const result = { lat: parseFloat(body[0].lat), lon: parseFloat(body[0].lon) };
-      geocache.set(port, result);
-      return result;
-    }
-  } catch { /* silently skip */ }
-  const empty = { lat: null, lon: null };
-  geocache.set(port, empty);
-  return empty;
 }
 
 // ---------------------------------------------------------------------------
