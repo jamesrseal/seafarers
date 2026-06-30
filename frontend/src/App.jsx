@@ -107,7 +107,17 @@ export default function App() {
             <div className={`${view === 'split' ? 'sm:w-1/2 flex-1 min-h-0 border-t sm:border-t-0 sm:border-l border-gray-200' : 'flex-1'} overflow-hidden`}>
               <ShipTable
                 ships={ships}
-                onSelect={(ship) => { setSelectedShip(ship); setHighlightedShip(ship); }}
+                onSelect={(ship) => {
+                  // No dot on the map to click (missing/zero coords) → open the
+                  // detail panel directly, since there's no marker to reach it.
+                  if (ship && !(ship.port_latitude && ship.port_longitude)) {
+                    setSelectedShip(ship);
+                    return;
+                  }
+                  // Otherwise highlight the dot on the map; clicking it opens detail.
+                  setHighlightedShip(ship);
+                  if (ship) { setView('split'); setSelectedShip(null); }
+                }}
                 highlighted={highlightedShip}
               />
             </div>
