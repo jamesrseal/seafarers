@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
 
-function fmtDate(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+function fmtDate(value) {
+  if (!value) return '—';
+  // A bare YYYY-MM-DD (the build date) is a calendar date, not an instant —
+  // parse it as local midnight so it isn't shifted back a day in timezones
+  // behind UTC. A full ISO timestamp (the scrape time) is a real instant and
+  // is shown in the viewer's local time.
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const d = new Date(isDateOnly ? `${value}T00:00:00` : value);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function Header() {
