@@ -122,12 +122,22 @@ function MapController({ ship, view, portFilter, countryFilter, ships }) {
   return null;
 }
 
-export default function Map({ ships, onSelect, highlighted, view, portFilter, countryFilter }) {
+export default function Map({ ships, onSelect, highlighted, view, portFilter, countryFilter, onShowUnmapped }) {
   const mappable = useMemo(() => ships.filter(s => s.port_latitude && s.port_longitude), [ships]);
+  const unmapped = ships.length - mappable.length;
 
   return (
     <div className="relative h-full w-full">
     <MapLegend />
+    {!highlighted && unmapped > 0 && (
+      <button
+        onClick={onShowUnmapped}
+        title="These cases have no usable location and aren't plotted. Open the table to view them."
+        className="absolute top-3 right-3 z-[1000] bg-white/90 border border-gray-200 rounded-lg shadow-md px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 pointer-events-auto"
+      >
+        <span className="font-semibold">{unmapped.toLocaleString()}</span> {unmapped === 1 ? 'case has' : 'cases have'} no location — view in table
+      </button>
+    )}
     <MapContainer
       center={[20, 10]}
       zoom={2}

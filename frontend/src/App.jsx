@@ -100,14 +100,14 @@ export default function App() {
         <div className={`flex-1 overflow-hidden flex ${view === 'table' ? 'flex-col' : view === 'split' ? 'flex-col sm:flex-row' : 'flex-row'}`}>
           {view !== 'table' && (
             <div className={view === 'split' ? 'flex-1 min-h-0' : 'flex-1'}>
-              <Map ships={ships} onSelect={setSelectedShip} highlighted={highlightedShip} view={view} portFilter={filters.port} countryFilter={filters.country} />
+              <Map ships={ships} onSelect={setSelectedShip} highlighted={highlightedShip} view={view} portFilter={filters.port} countryFilter={filters.country} onShowUnmapped={() => setView('table')} />
             </div>
           )}
           {view !== 'map' && (
             <div className={`${view === 'split' ? 'sm:w-1/2 flex-1 min-h-0 border-t sm:border-t-0 sm:border-l border-gray-200' : 'flex-1'} overflow-hidden`}>
               <ShipTable
                 ships={ships}
-                onSelect={(ship) => { setHighlightedShip(ship); if (ship) setView('split'); }}
+                onSelect={(ship) => { setSelectedShip(ship); setHighlightedShip(ship); }}
                 highlighted={highlightedShip}
               />
             </div>
