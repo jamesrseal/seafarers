@@ -3,8 +3,8 @@
  * ILO Abandoned Seafarers scraper (Node.js + Playwright)
  *
  * Usage:
- *   node scrape.js [--start 1] [--end 1705] [--api http://localhost:3001] [--concurrency 5]
- *   node scrape.js --rescan-open [--api http://localhost:3001] [--concurrency 5]
+ *   node scrape.js [--start 1] [--end 1705] [--api http://localhost:3001] [--concurrency 4]
+ *   node scrape.js --rescan-open [--api http://localhost:3001] [--concurrency 4]
  *
  * Modes:
  *   Default       Range scan from START to END, then auto-extends beyond END until
@@ -51,7 +51,7 @@ const FORCE        = hasFlag('--force'); // bypass the pre-ingest sanity guard
 const START        = parseInt(getArg('--start', '1'), 10);
 const END          = parseInt(getArg('--end', '1705'), 10);
 const API_URL      = getArg('--api', 'http://localhost:3001');
-const CONCURRENCY  = parseInt(getArg('--concurrency', '5'), 10);
+const CONCURRENCY  = parseInt(getArg('--concurrency', '4'), 10);
 
 const MAX_RETRIES        = 3;
 const RETRY_BASE_MS      = 3000;
