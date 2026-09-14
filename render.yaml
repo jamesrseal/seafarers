@@ -9,8 +9,8 @@ services:
         value: production
       - key: DATABASE_PATH
         value: /data/seafarers.db
-      # Shared secret for POST /api/scrapes/ingest; must match the INGEST_TOKEN
-      # GitHub Actions secret used by .github/workflows/refresh-data.yml.
+      # Shared secret for POST /api/scrapes/ingest on the live site; production
+      # refuses ingest when it's unset. The daily refresh ingests on the runner.
       - key: INGEST_TOKEN
         sync: false
     disk:
