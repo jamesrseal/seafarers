@@ -9,6 +9,10 @@ services:
         value: production
       - key: DATABASE_PATH
         value: /data/seafarers.db
+      # Shared secret for POST /api/scrapes/ingest; must match the INGEST_TOKEN
+      # GitHub Actions secret used by .github/workflows/refresh-data.yml.
+      - key: INGEST_TOKEN
+        sync: false
     disk:
       name: seafarers-data
       mountPath: /data

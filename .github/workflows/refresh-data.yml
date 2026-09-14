@@ -1,0 +1,89 @@
+name: Refresh ILO data
+
+# Scrapes the ILO abandonment database every day and ingests the results
+# straight into the live site's API — no commit or redeploy needed.
+# Requires the INGEST_TOKEN repository secret (must match INGEST_TOKEN in Render).
+
+on:
+  schedule:
+    - cron: '23 5 * * *' # daily 05:23 UTC (off the hour, when Actions queues are busiest)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Full range scan, or only re-check Unresolved/Disputed cases
+        type: choice
+        options: [full, rescan-open]
+        default: full
+      force:
+        description: Ingest even if the sanity guard fails
+        type: boolean
+        default: false
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write # re-enable this workflow's schedule (see last step)
+
+env:
+  API_URL: https://seafarers-1044.onrender.com
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: scraper
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scraper/package-lock.json
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Scrape and ingest
+        env:
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+          MODE: ${{ inputs.mode || 'full' }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+        run: |
+          if [ -z "$INGEST_TOKEN" ]; then
+            echo "::error::The INGEST_TOKEN repository secret is not set"
+            exit 1
+          fi
+          if [ "$MODE" = "rescan-open" ]; then
+            node scrape.js --rescan-open --api "$API_URL" --concurrency 4 $FORCE
+          else
+            # Range-scan every known case ID; the scraper then auto-extends past
+            # the highest one to pick up newly added cases.
+            END=$(curl -fsS --retry 3 "$API_URL/api/ships" | jq '[.[].abandonment_id | tonumber] | max')
+            node scrape.js --start 1 --end "$END" --api "$API_URL" --concurrency 4 $FORCE
+          fi
+
+      - name: Upload raw scrape
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: raw-scrape
+          path: scraper/scraped_*.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # GitHub disables scheduled workflows in public repos after 60 days with
+      # no commits. This workflow never commits, so re-enable it on every
+      # scheduled run to keep the schedule alive.
+      - name: Keep schedule enabled
+        if: always() && github.event_name == 'schedule'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/refresh-data.yml/enable"

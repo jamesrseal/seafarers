@@ -1,14 +1,22 @@
 #!/bin/bash
 set -e
 
-# On first deploy, seed the persistent disk from the bundled database.
-# On subsequent deploys the disk file already exists and is left untouched,
-# preserving any data written by the scraper since the last deploy.
+# Seed the persistent disk from the bundled database only when the disk has no
+# database yet (first deploy). After that the disk copy is the source of truth —
+# the daily GitHub Actions scrape writes straight to it — so redeploys must not
+# overwrite it. Set RESEED_DB=true for one deploy to force a reseed from the
+# committed file (discards anything scraped since that file was committed).
 if [ -n "$DATABASE_PATH" ]; then
-  echo "Seeding database to persistent disk..."
   mkdir -p "$(dirname "$DATABASE_PATH")"
-  cp backend/data/seafarers.db "$DATABASE_PATH"
-  echo "Done."
+  if [ ! -f "$DATABASE_PATH" ] || [ "$RESEED_DB" = "true" ]; then
+    echo "Seeding database to persistent disk..."
+    # A leftover WAL from the old database would corrupt the new copy.
+    rm -f "$DATABASE_PATH-wal" "$DATABASE_PATH-shm"
+    cp backend/data/seafarers.db "$DATABASE_PATH"
+    echo "Done."
+  else
+    echo "Using existing database at $DATABASE_PATH"
+  fi
 fi
 
 node backend/src/app.js

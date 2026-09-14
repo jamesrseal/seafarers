@@ -44,9 +44,17 @@ node scrape.js --rescan-open --api http://localhost:3001 --concurrency 4
 ## Architecture
 
 ### Database
-Single SQLite table `ships` at `backend/data/seafarers.db`. Schema is in `backend/src/db/schema.sql`. Each scrape run inserts rows with the same `scraped_at` timestamp, so every scrape is preserved for historical comparison.
+SQLite at `backend/data/seafarers.db` locally; in production it lives on the Render disk (`DATABASE_PATH=/data/seafarers.db`). Schema is in `backend/src/db/schema.sql`.
+
+- `ships` — ingest compares each scraped ship with its latest row and inserts it (stamped with the run's `scraped_at`) only when a field differs, so history holds one row per actual change.
+- `scrape_runs` — one row per ingest (`scraped_at`, `received`, `inserted`). This, not `ships`, records when scrapes ran; the header's "Data updated" date comes from it.
 
 The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`.
+
+`start.sh` copies the committed DB onto the Render disk only when the disk has none (or `RESEED_DB=true`), so deploys don't wipe scraped data.
+
+### Scheduled refresh
+`.github/workflows/refresh-data.yml` runs a full scrape daily (and on demand via workflow_dispatch) directly against the live API. It authenticates with the `INGEST_TOKEN` repository secret, which must match `INGEST_TOKEN` in Render.
 
 ### API Endpoints
 | Method | Path | Description |
@@ -55,11 +63,11 @@ The `GET /api/ships` query selects only the most recent row per `abandonment_id`
 | GET | `/api/ships/filters` | Distinct values for dropdowns |
 | GET | `/api/ships/:id` | Single ship (latest) |
 | GET | `/api/ships/:id/history` | All historical rows for a ship |
-| GET | `/api/scrapes` | List of scrape runs with record counts |
-| POST | `/api/scrapes/ingest` | Bulk insert from scraper: `{ scraped_at, ships: [...] }` |
+| GET | `/api/scrapes` | Scrape runs, newest first: `scraped_at`, `record_count` (scraped), `inserted` (new/changed) |
+| POST | `/api/scrapes/ingest` | Bulk ingest from scraper: `{ scraped_at, ships: [...] }`. Requires `Authorization: Bearer $INGEST_TOKEN` when `INGEST_TOKEN` is set; refused in production when it isn't |
 
 ### Scraper
-The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. IDs 1–1700 are iterated; missing/404 pages are silently skipped. Port geocoding uses `geopy.Nominatim` with the `cleaned_ports_list.csv` overrides (tilde-delimited). Flag image URLs come from `flag_urls.csv`. If the backend is unreachable, the scraper saves output to `scraper/scraped_YYYY-MM-DD.json`.
+The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. IDs 1–1700 are iterated; missing/404 pages are silently skipped. Port geocoding uses `geopy.Nominatim` with the `cleaned_ports_list.csv` overrides (tilde-delimited). Flag image URLs come from `flag_urls.csv`. Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
 
 ### Frontend
 - `App.jsx` owns all state (filters, selected ship, view mode)
