@@ -1,8 +1,10 @@
 name: Refresh ILO data
 
-# Scrapes the ILO abandonment database every day and ingests the results
-# straight into the live site's API — no commit or redeploy needed.
-# Requires the INGEST_TOKEN repository secret (must match INGEST_TOKEN in Render).
+# Scrapes the ILO abandonment database every day into a copy of the backend
+# running on the runner, then commits the updated backend/data/seafarers.db to
+# master. Render redeploys on that push, so the site restarts with the new data.
+# (Render's free plan has no persistent disk, so the committed database is the
+# only copy that survives restarts.)
 
 on:
   schedule:
@@ -24,19 +26,16 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
-  actions: write # re-enable this workflow's schedule (see last step)
+  contents: write # push the refreshed database to master
 
 env:
-  API_URL: https://seafarers-1044.onrender.com
+  API_URL: http://localhost:3001
+  DB_PATH: backend/data/seafarers.db
 
 jobs:
-  scrape:
+  refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    defaults:
-      run:
-        working-directory: scraper
     steps:
       - uses: actions/checkout@v7
 
@@ -44,46 +43,94 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: scraper/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            scraper/package-lock.json
 
-      - run: npm ci
+      - name: Install backend
+        run: npm ci --prefix backend --omit=dev
 
-      - run: npx playwright install --with-deps chromium
+      - name: Install scraper
+        working-directory: scraper
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start backend
+        run: |
+          node backend/src/app.js > backend.log 2>&1 &
+          echo $! > backend.pid
+          for i in $(seq 1 30); do
+            curl -fsS "$API_URL/api/scrapes" > /dev/null && exit 0
+            sleep 1
+          done
+          cat backend.log
+          exit 1
 
       - name: Scrape and ingest
+        working-directory: scraper
         env:
-          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
           MODE: ${{ inputs.mode || 'full' }}
           FORCE: ${{ inputs.force && '--force' || '' }}
         run: |
-          if [ -z "$INGEST_TOKEN" ]; then
-            echo "::error::The INGEST_TOKEN repository secret is not set"
-            exit 1
-          fi
+          echo "BEFORE=$(curl -fsS "$API_URL/api/ships" | jq length)" >> "$GITHUB_ENV"
           if [ "$MODE" = "rescan-open" ]; then
             node scrape.js --rescan-open --api "$API_URL" --concurrency 4 $FORCE
           else
             # Range-scan every known case ID; the scraper then auto-extends past
             # the highest one to pick up newly added cases.
-            END=$(curl -fsS --retry 3 "$API_URL/api/ships" | jq '[.[].abandonment_id | tonumber] | max')
+            END=$(curl -fsS "$API_URL/api/ships" | jq '[.[].abandonment_id | tonumber] | max')
             node scrape.js --start 1 --end "$END" --api "$API_URL" --concurrency 4 $FORCE
           fi
 
-      - name: Upload raw scrape
+      - name: Stop backend and checkpoint database
+        run: |
+          echo "AFTER=$(curl -fsS "$API_URL/api/ships" | jq length)" >> "$GITHUB_ENV"
+          PID=$(cat backend.pid)
+          kill "$PID"
+          for i in $(seq 1 30); do kill -0 "$PID" 2>/dev/null || break; sleep 1; done
+          # The backend runs in WAL mode; fold the WAL into the main file so the
+          # single committed file is complete.
+          node -e "const D = require('./backend/node_modules/better-sqlite3'); const db = new D(process.env.DB_PATH); db.pragma('wal_checkpoint(TRUNCATE)'); db.pragma('journal_mode = DELETE'); db.close();"
+          ls -l backend/data
+
+      - name: Commit and push
+        if: github.ref == 'refs/heads/master'
+        run: |
+          if git diff --quiet -- "$DB_PATH"; then
+            echo "Database unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$DB_PATH"
+          git commit -m "Refresh ILO data ($AFTER ships, $((AFTER - BEFORE)) new)"
+          # Replay on top of anything pushed to master while the scrape ran.
+          git pull --rebase origin master
+          git push origin HEAD:master
+
+      # Runs dispatched from other branches are dry runs: nothing is pushed.
+      - name: Dry run (not on master)
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "Would commit: Refresh ILO data ($AFTER ships, $((AFTER - BEFORE)) new)"
+          git diff --stat -- "$DB_PATH"
+
+      - name: Upload refreshed database (dry run)
+        if: github.ref != 'refs/heads/master'
+        uses: actions/upload-artifact@v7
+        with:
+          name: seafarers-db
+          path: backend/data/seafarers.db
+          retention-days: 7
+
+      - name: Upload logs and raw scrape
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: raw-scrape
-          path: scraper/scraped_*.json
+          name: refresh-failure
+          path: |
+            backend.log
+            scraper/scraped_*.json
           if-no-files-found: ignore
           retention-days: 14
-
-      # GitHub disables scheduled workflows in public repos after 60 days with
-      # no commits. This workflow never commits, so re-enable it on every
-      # scheduled run to keep the schedule alive.
-      - name: Keep schedule enabled
-        if: always() && github.event_name == 'schedule'
-        working-directory: .
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/refresh-data.yml/enable"

@@ -44,17 +44,15 @@ node scrape.js --rescan-open --api http://localhost:3001 --concurrency 4
 ## Architecture
 
 ### Database
-SQLite at `backend/data/seafarers.db` locally; in production it lives on the Render disk (`DATABASE_PATH=/data/seafarers.db`). Schema is in `backend/src/db/schema.sql`.
+SQLite at `backend/data/seafarers.db`. The committed file is the live data: Render's free plan has no persistent disk, so `start.sh` copies it to `DATABASE_PATH` (`/data/seafarers.db`) on every deploy and restart. Schema is in `backend/src/db/schema.sql`.
 
 - `ships` — ingest compares each scraped ship with its latest row and inserts it (stamped with the run's `scraped_at`) only when a field differs, so history holds one row per actual change.
 - `scrape_runs` — one row per ingest (`scraped_at`, `received`, `inserted`). This, not `ships`, records when scrapes ran; the header's "Data updated" date comes from it.
 
 The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`.
 
-`start.sh` copies the committed DB onto the Render disk only when the disk has none (or `RESEED_DB=true`), so deploys don't wipe scraped data.
-
 ### Scheduled refresh
-`.github/workflows/refresh-data.yml` runs a full scrape daily (and on demand via workflow_dispatch) directly against the live API. It authenticates with the `INGEST_TOKEN` repository secret, which must match `INGEST_TOKEN` in Render.
+`.github/workflows/refresh-data.yml` runs a full scrape daily (and on demand via workflow_dispatch). It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, and commits `backend/data/seafarers.db` to `master` ("Refresh ILO data (N ships, M new)"); Render redeploys on the push. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
 
 ### API Endpoints
 | Method | Path | Description |

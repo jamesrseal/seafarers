@@ -10,8 +10,8 @@ scraper/node_modules/
 # Build output
 frontend/dist/
 
-# SQLite database — tracked only to seed a brand-new Render disk. Live data is
-# on the Render disk, refreshed daily by .github/workflows/refresh-data.yml.
+# SQLite database — tracked: the committed file is the live data. Render copies
+# it into place on start; .github/workflows/refresh-data.yml commits it daily.
 !backend/data/
 backend/data/*.json
 backend/data/*.db-shm
