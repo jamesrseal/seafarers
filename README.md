@@ -47,6 +47,22 @@ cd frontend && npm run build
 cd ../backend && npm start   # serves React build as static files on port 3001
 ```
 
+## Automatic daily refresh
+
+`.github/workflows/refresh-data.yml` runs the scraper every day at 05:23 UTC on GitHub Actions and posts the results straight to the live site's ingest API — no commit or redeploy needed. The database on the Render disk is the live source of truth; the committed `backend/data/seafarers.db` only seeds a brand-new disk.
+
+One-time setup:
+
+1. Generate a random token, e.g. `openssl rand -hex 32`.
+2. In Render → the `seafarers` service → **Environment**, add `INGEST_TOKEN` with that value.
+3. In GitHub → **Settings → Secrets and variables → Actions**, add a repository secret named `INGEST_TOKEN` with the same value.
+
+Run it on demand from **Actions → Refresh ILO data → Run workflow** (full scan or `rescan-open`, optionally forcing past the sanity guard). A failed run — including a tripped sanity guard — shows as failed in Actions, GitHub emails you, and the raw scrape is attached to the run as an artifact.
+
+Ingest only stores ships whose data changed since their latest row, so the database grows with real changes rather than a full copy of every scrape.
+
+To replace the live database with the committed `seafarers.db` (this discards everything scraped since that file was committed), set `RESEED_DB=true` in Render, deploy, then remove it.
+
 ## Project Structure
 
 ```

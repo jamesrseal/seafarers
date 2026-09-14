@@ -89,4 +89,17 @@ async function geocode(port, overrides = {}) {
   return empty;
 }
 
-module.exports = { geocode, geocodeCandidates, loadPortOverrides, sleep };
+// Pre-fill the cache from already-geocoded ships (API rows with
+// port_of_abandonment/port_latitude/port_longitude) so repeat scrapes only
+// query Nominatim for new ports. Ports without coordinates are left out so
+// they are still retried.
+function seedGeocache(ships) {
+  for (const s of ships) {
+    const port = s.port_of_abandonment;
+    if (port && s.port_latitude != null && s.port_longitude != null && !geocache.has(port)) {
+      geocache.set(port, { lat: s.port_latitude, lon: s.port_longitude });
+    }
+  }
+}
+
+module.exports = { geocode, geocodeCandidates, loadPortOverrides, seedGeocache, sleep };

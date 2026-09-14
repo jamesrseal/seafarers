@@ -17,6 +17,9 @@
  *   --force       Ingest even if the pre-ingest sanity guard fails (use when a
  *                 large drop in record count or field fill-rate is legitimate).
  *
+ * Environment:
+ *   INGEST_TOKEN  Sent as a bearer token on ingest; the production API requires it.
+ *
  * Robustness:
  *   Each page is retried up to MAX_RETRIES times with exponential backoff before
  *                 being skipped, preventing transient network errors from causing gaps.
@@ -34,7 +37,7 @@ const https = require('https');
 const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
-const { geocode, loadPortOverrides } = require('./geocode');
+const { geocode, loadPortOverrides, seedGeocache } = require('./geocode');
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -52,6 +55,7 @@ const START        = parseInt(getArg('--start', '1'), 10);
 const END          = parseInt(getArg('--end', '1705'), 10);
 const API_URL      = getArg('--api', 'http://localhost:3001');
 const CONCURRENCY  = parseInt(getArg('--concurrency', '4'), 10);
+const INGEST_TOKEN = process.env.INGEST_TOKEN || '';
 
 const MAX_RETRIES        = 3;
 const RETRY_BASE_MS      = 3000;
@@ -104,7 +108,7 @@ function fetchJson(url, extraHeaders = {}) {
   });
 }
 
-function postJson(url, payload) {
+function postJson(url, payload, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const body   = JSON.stringify(payload);
     const parsed = new URL(url);
@@ -114,7 +118,7 @@ function postJson(url, payload) {
       port:     parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
       path:     parsed.pathname + parsed.search,
       method:   'POST',
-      headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), ...extraHeaders },
     }, res => {
       let data = '';
       res.on('data', c => data += c);
@@ -405,6 +409,11 @@ async function main() {
   const flagUrls      = loadFlagUrls();
   const scrapedAt     = new Date().toISOString();
 
+  // The current snapshot is the sanity guard's baseline, and its coordinates
+  // seed the geocoder so known ports aren't re-queried on Nominatim every run.
+  const prev = await fetchPreviousSnapshot();
+  seedGeocache(prev);
+
   const browser = await chromium.launch({ headless: true });
   let records   = [];
 
@@ -429,7 +438,6 @@ async function main() {
 
   // Guard: don't let a broken scrape overwrite good data. Compare against the
   // current snapshot and bail (saving the raw scrape) if the run looks broken.
-  const prev  = await fetchPreviousSnapshot();
   const check = sanityCheck(records, prev);
   if (!check.ok) {
     const out = path.join(__dirname, `scraped_${scrapedAt.slice(0, 10)}.json`);
@@ -446,13 +454,23 @@ async function main() {
   }
 
   console.log(`Posting to ${API_URL}/api/scrapes/ingest …`);
+  const authHeaders = INGEST_TOKEN ? { Authorization: `Bearer ${INGEST_TOKEN}` } : {};
+  let error = null;
   try {
-    const res = await postJson(`${API_URL}/api/scrapes/ingest`, { scraped_at: scrapedAt, ships: records });
+    const res = await postJson(`${API_URL}/api/scrapes/ingest`, { scraped_at: scrapedAt, ships: records }, authHeaders);
     console.log(`Ingest response (${res.status}):`, res.body);
+    if (res.status < 200 || res.status >= 300) error = `HTTP ${res.status}`;
   } catch (e) {
+    error = e.message;
+  }
+
+  // Exit non-zero on a failed ingest so scheduled runs (GitHub Actions) report
+  // the failure instead of passing silently.
+  if (error) {
     const out = path.join(__dirname, `scraped_${scrapedAt.slice(0, 10)}.json`);
     fs.writeFileSync(out, JSON.stringify({ scraped_at: scrapedAt, ships: records }, null, 2));
-    console.error(`API error: ${e.message}\nFallback saved to ${out}`);
+    console.error(`API error: ${error}\nFallback saved to ${out}`);
+    process.exit(1);
   }
 }
 

@@ -10,8 +10,8 @@ scraper/node_modules/
 # Build output
 frontend/dist/
 
-# SQLite database — tracked so Render has an initial seed on first deploy.
-# To update production data: run the scraper locally, then commit and push.
+# SQLite database — tracked only to seed a brand-new Render disk. Live data is
+# on the Render disk, refreshed daily by .github/workflows/refresh-data.yml.
 !backend/data/
 backend/data/*.json
 backend/data/*.db-shm
