@@ -7,13 +7,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # No persistent disk (free plan): /data is wiped on every restart, and
+      # start.sh copies the committed backend/data/seafarers.db there on start.
       - key: DATABASE_PATH
         value: /data/seafarers.db
       # Shared secret for POST /api/scrapes/ingest on the live site; production
       # refuses ingest when it's unset. The daily refresh ingests on the runner.
       - key: INGEST_TOKEN
         sync: false
-    disk:
-      name: seafarers-data
-      mountPath: /data
-      sizeGB: 1
