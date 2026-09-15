@@ -47,9 +47,30 @@ cd frontend && npm run build
 cd ../backend && npm start   # serves React build as static files on port 3001
 ```
 
+## When the daily jobs run
+
+The data refresh and the Bluesky post start at times kept in two repository variables, under **Settings → Secrets and variables → Actions → Variables**. Changing one needs no commit and no redeploy.
+
+| Variable | Starts | If unset |
+|---|---|---|
+| `REFRESH_TIME_UTC` | Refresh ILO data | 05:23 |
+| `POST_TIME_UTC` | Post to Bluesky | 13:41 |
+
+Each is a UTC time written `HH:MM`, or `off` to pause that job. From a terminal: `gh variable set POST_TIME_UTC --body 14:00`.
+
+`.github/workflows/scheduler.yml` runs every half hour and starts each job once its time has passed, unless it has already run since. What that means in practice:
+- **Times are approximate.** GitHub starts scheduled runs late when it's busy, sometimes by hours, so a time means "at or after", not "at".
+- **A manual run counts** as that day's run if it started after the set time. A dry run doesn't count.
+- **A failed run isn't retried** until the next day's time.
+- **A variable that isn't a valid time** makes the scheduler fail, and GitHub emails you.
+- **Avoid times after about 23:00.** A late start slips into the next UTC day.
+- **Keep the post an hour or more after the refresh**, so it uses that day's data.
+
+To see what's due without starting anything, go to **Actions → Scheduler → Run workflow**. Dry run is ticked by default.
+
 ## Automatic daily refresh
 
-`.github/workflows/refresh-data.yml` runs every day at 05:23 UTC on GitHub Actions. It starts the backend on the runner with the committed `backend/data/seafarers.db`, runs the scraper against it, and commits the updated database to `master` as "Refresh ILO data (N ships, M new)". Render redeploys on that push, so the site is briefly unavailable while it restarts with the new data.
+`.github/workflows/refresh-data.yml` runs once a day on GitHub Actions, at the time in `REFRESH_TIME_UTC` (see above). It starts the backend on the runner with the committed `backend/data/seafarers.db`, runs the scraper against it, and commits the updated database to `master` as "Refresh ILO data (N ships, M new)". Render redeploys on that push, so the site is briefly unavailable while it restarts with the new data.
 
 Render's free plan has no persistent disk, so the committed database is the live data: `start.sh` copies it into place on every deploy and restart. Ingest only stores ships whose data changed since their latest row, so each day's commit is small.
 
@@ -59,7 +80,7 @@ The live site's `POST /api/scrapes/ingest` requires the `INGEST_TOKEN` set in Re
 
 ## Daily Bluesky post
 
-`.github/workflows/post-bluesky.yml` posts one abandonment case a day, at 13:41 UTC, to [@abandonedseafarers.bsky.social](https://bsky.app/profile/abandonedseafarers.bsky.social). The code is in `bluesky/`: Node 22.13+, no dependencies.
+`.github/workflows/post-bluesky.yml` posts one abandonment case a day, at the time in `POST_TIME_UTC` (see [When the daily jobs run](#when-the-daily-jobs-run)), to [@abandonedseafarers.bsky.social](https://bsky.app/profile/abandonedseafarers.bsky.social). The code is in `bluesky/`: Node 22.13+, no dependencies.
 
 **Nothing in a post is written freehand.** Each post is a fixed template filled from the case's record in the committed database: ship name, flag, crew count, port, abandonment date and the site's status label. Most posts also carry whole sentences quoted word for word from the case's circumstances and its latest dated update. For example:
 

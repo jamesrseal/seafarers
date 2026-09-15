@@ -52,8 +52,20 @@ SQLite at `backend/data/seafarers.db`. The committed file is the live data: Rend
 
 The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`.
 
+### Scheduler
+`.github/workflows/scheduler.yml` runs every half hour and calls `.github/scripts/dispatch-due.sh` once per daily workflow. It starts that workflow once the time in its repository variable has passed, unless a run has been created since:
+- `REFRESH_TIME_UTC` (default 05:23) starts the refresh;
+- `POST_TIME_UTC` (default 13:41) starts the Bluesky post.
+
+Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight, so a late tick never skips a day.
+- **Why it exists:** `schedule:` can't read `vars`. Don't put a `schedule:` back on refresh-data.yml or post-bluesky.yml, or they will run twice.
+- **Dry runs don't count.** A run counts as done unless its run name ends "(dry run)". Both workflows set `run-name` for exactly this, so keep it in step with their dry-run logic.
+- **Permissions:** dispatching needs `permissions: actions: write`. `GITHUB_TOKEN` is allowed to start `workflow_dispatch` runs; that is the exception to its "no new runs" rule.
+- **Posts need `dry_run=false`.** A dispatched post is a dry run without it.
+- **Testing:** test the script locally with a stub `gh` on PATH and `NOW=<epoch seconds>`.
+
 ### Scheduled refresh
-`.github/workflows/refresh-data.yml` runs a full scrape daily (and on demand via workflow_dispatch). It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, and commits `backend/data/seafarers.db` to `master` ("Refresh ILO data (N ships, M new)"); Render redeploys on the push. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
+`.github/workflows/refresh-data.yml` runs a full scrape once a day, started by the scheduler, and on demand via workflow_dispatch. It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, and commits `backend/data/seafarers.db` to `master` ("Refresh ILO data (N ships, M new)"); Render redeploys on the push. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
 
 ### API Endpoints
 | Method | Path | Description |
@@ -76,7 +88,7 @@ The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail pa
 - Three view modes: Map, Map + Table (split), Table only
 
 ### Bluesky poster
-`.github/workflows/post-bluesky.yml` runs `bluesky/post.js` daily at 13:41 UTC, and on demand (off `master` always as a dry run). It picks one case, composes a post, verifies it and publishes it to @abandonedseafarers.bsky.social. The account's DID is pinned in `bluesky/src/config.js`. Setup: repo secrets `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD`, plus an optional variable `BLUESKY_SKIP_CASES`.
+`.github/workflows/post-bluesky.yml` runs `bluesky/post.js` once a day, when the scheduler starts it at `POST_TIME_UTC`, and on demand (off `master` always as a dry run). It picks one case, composes a post, verifies it and publishes it to @abandonedseafarers.bsky.social. The account's DID is pinned in `bluesky/src/config.js`. Setup: repo secrets `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD`, plus an optional variable `BLUESKY_SKIP_CASES`.
 
 - `src/load.js`: latest row per case from the committed DB, read-only, via Node's built-in `node:sqlite`. Don't go through `backend/src/db/database.js`, which writes on open.
 - `src/feed.js`: already-posted case IDs, read back from the account's own records (`?ship=<id>` in the link card or a link facet).

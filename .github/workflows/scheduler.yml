@@ -1,0 +1,63 @@
+name: Scheduler
+
+# Starts the daily workflows at times kept in repository variables, so changing
+# a time needs no commit (and so no Render redeploy):
+#
+#   REFRESH_TIME_UTC   Refresh ILO data   (05:23 if unset)
+#   POST_TIME_UTC      Post to Bluesky    (13:41 if unset)
+#
+# Each is HH:MM in UTC, or "off" to pause that workflow. Set them under
+# Settings -> Secrets and variables -> Actions -> Variables, or with
+#   gh variable set POST_TIME_UTC --body 14:00
+#
+# A schedule can't read a variable, so this runs every half hour and starts a
+# workflow once its time has passed and it hasn't run since. GitHub starts
+# scheduled runs late when it is busy (by hours, at worst), so a time means
+# "at or after", never "at". Avoid times after about 23:00: a run that slips
+# past midnight still happens, but on the next UTC day.
+
+on:
+  schedule:
+    - cron: '7,37 * * * *' # off the hour, when Actions queues are busiest
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only report what is due; don't start anything
+        type: boolean
+        default: true
+
+concurrency:
+  group: scheduler
+  cancel-in-progress: false
+
+permissions:
+  actions: write # list workflow runs and start workflows
+  contents: read # check out the script
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Only the script: a full checkout would download the 25 MB database
+      # every half hour.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+          filter: blob:none
+
+      - name: Start what is due
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REF: master
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
+          REFRESH_TIME_UTC: ${{ vars.REFRESH_TIME_UTC || '05:23' }}
+          POST_TIME_UTC: ${{ vars.POST_TIME_UTC || '13:41' }}
+        run: |
+          # Both are checked even if the first fails; the run fails if either did.
+          status=0
+          bash .github/scripts/dispatch-due.sh REFRESH_TIME_UTC refresh-data.yml "$REFRESH_TIME_UTC" || status=1
+          # dry_run=false: a dispatched post is otherwise a dry run.
+          bash .github/scripts/dispatch-due.sh POST_TIME_UTC post-bluesky.yml "$POST_TIME_UTC" -f dry_run=false || status=1
+          exit "$status"

@@ -1,14 +1,18 @@
 name: Refresh ILO data
+# The scheduler counts every run of this workflow as the day's refresh, except
+# one whose name ends "(dry run)".
+run-name: "Refresh ILO data${{ github.ref != 'refs/heads/master' && ' (dry run)' || '' }}"
 
 # Scrapes the ILO abandonment database every day into a copy of the backend
 # running on the runner, then commits the updated backend/data/seafarers.db to
 # master. Render redeploys on that push, so the site restarts with the new data.
 # (Render's free plan has no persistent disk, so the committed database is the
 # only copy that survives restarts.)
+#
+# There is no schedule here: scheduler.yml starts this once a day at the time in
+# the REFRESH_TIME_UTC repository variable. Adding a schedule back would run it twice.
 
 on:
-  schedule:
-    - cron: '23 5 * * *' # daily 05:23 UTC (off the hour, when Actions queues are busiest)
   workflow_dispatch:
     inputs:
       mode:
