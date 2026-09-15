@@ -1,17 +1,22 @@
 name: Post to Bluesky
+# The scheduler counts every run of this workflow as the day's post, except one
+# whose name ends "(dry run)". Keep this in step with DRY_RUN below.
+run-name: "Post to Bluesky${{ (github.ref != 'refs/heads/master' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)) && ' (dry run)' || '' }}"
 
 # Posts one ILO abandonment case a day to @abandonedseafarers.bsky.social, from
 # the committed backend/data/seafarers.db. It NEVER commits: a push to master
 # redeploys Render. Which cases were already posted is read back from the
 # account's own posts, so there is no state to keep anywhere.
 #
+# There is no schedule here: scheduler.yml starts this once a day, with
+# dry_run=false, at the time in the POST_TIME_UTC repository variable. Adding a
+# schedule back would post twice as often as intended.
+#
 # Its own concurrency group, deliberately not refresh-data's: a checkout only
 # ever sees a fully committed database, and sharing a group would let a queued
 # post cancel a queued refresh.
 
 on:
-  schedule:
-    - cron: '41 13 * * *' # 13:41 UTC: 09:41 New York, 14:41 London, 21:41 Manila; off the hour
   workflow_dispatch:
     inputs:
       dry_run:

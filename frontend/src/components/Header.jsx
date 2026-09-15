@@ -1,25 +1,35 @@
 import { useState, useEffect } from 'react';
 
-function fmtDate(value) {
-  if (!value) return '—';
-  // A bare YYYY-MM-DD (the build date) is a calendar date, not an instant —
-  // parse it as local midnight so it isn't shifted back a day in timezones
-  // behind UTC. A full ISO timestamp (the scrape time) is a real instant and
-  // is shown in the viewer's local time.
-  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
-  const d = new Date(isDateOnly ? `${value}T00:00:00` : value);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+// The later of the data refresh and the last app-code change: one "Updated" time
+// for the whole site. Both are full timestamps (the scrape time, and the commit
+// time baked in by vite.config.js), shown in the viewer's local time with its
+// zone, so a reader in New York and one in Manila see the same moment.
+function latest(...values) {
+  const times = values.filter(Boolean).map(v => new Date(v)).filter(d => !Number.isNaN(d.getTime()));
+  return times.length ? new Date(Math.max(...times)) : null;
+}
+
+function fmtDateTime(date) {
+  if (!date) return '—';
+  return date.toLocaleString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+  });
 }
 
 export default function Header() {
-  const [dataUpdated, setDataUpdated] = useState(null);
+  // undefined while /api/scrapes loads, so the app's commit time doesn't show
+  // briefly and then jump forward; null if it failed or has no runs.
+  const [dataUpdated, setDataUpdated] = useState(undefined);
 
   useEffect(() => {
     fetch('/api/scrapes')
       .then(r => r.json())
-      .then(runs => { if (runs[0]) setDataUpdated(runs[0].scraped_at); })
-      .catch(() => {});
+      .then(runs => setDataUpdated(runs[0]?.scraped_at ?? null))
+      .catch(() => setDataUpdated(null));
   }, []);
+
+  const updated = dataUpdated === undefined ? null : latest(dataUpdated, __APP_UPDATED__);
 
   return (
     <header className="bg-gray-900 text-white px-6 py-4 shadow-lg">
@@ -47,9 +57,8 @@ export default function Header() {
             </a>
           </p>
         </div>
-        <div className="text-right text-xs text-gray-400 space-y-0.5">
-          <div>Data updated: <span className="text-gray-300">{fmtDate(dataUpdated)}</span></div>
-          <div>App updated: <span className="text-gray-300">{fmtDate(__APP_UPDATED__)}</span></div>
+        <div className="text-right text-xs text-gray-400">
+          Updated: <span className="text-gray-300">{fmtDateTime(updated)}</span>
         </div>
       </div>
     </header>
