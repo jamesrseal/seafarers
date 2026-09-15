@@ -74,6 +74,7 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 | GET | `/api/ships/filters` | Distinct values for dropdowns |
 | GET | `/api/ships/:id` | Single ship (latest) |
 | GET | `/api/ships/:id/history` | All historical rows for a ship |
+| GET | `/api/ships/status-changes` | Every status change the refreshes have recorded: `{ runs: [scraped_at…], changes: [{ scraped_at, previous_scraped_at, from, to }] }`, from consecutive history rows. Only goes back to the first scrape run; declared before `/:id` |
 | GET | `/api/scrapes` | Scrape runs, newest first: `scraped_at`, `record_count` (scraped), `inserted` (new/changed) |
 | POST | `/api/scrapes/ingest` | Bulk ingest from scraper: `{ scraped_at, ships: [...] }`. Requires `Authorization: Bearer $INGEST_TOKEN` when `INGEST_TOKEN` is set; refused in production when it isn't |
 
@@ -86,6 +87,11 @@ The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail pa
 - `useFilters` hook fetches `/api/ships/filters` once on mount
 - Map markers are Leaflet `CircleMarker`s — radius scales with `num_seafarers`, color by `ship_status`
 - Three view modes: Map, Map + Table (split), Table only
+- The Dashboard's two "over time" charts live in `CasesOverTime.jsx`, drawn as plain SVG (no chart library), each with a table view:
+  - **New cases per month** comes from the ILO `notification_date`.
+  - **Status changes per week** comes from `/api/ships/status-changes`.
+
+  The ILO publishes no resolution or status-change dates, so status changes only exist from the site's own history. Weeks with no refresh are shaded, not shown as zero.
 
 ### Bluesky poster
 `.github/workflows/post-bluesky.yml` runs `bluesky/post.js` once a day, when the scheduler starts it at `POST_TIME_UTC`, and on demand (off `master` always as a dry run). It picks one case, composes a post, verifies it and publishes it to @abandonedseafarers.bsky.social. The account's DID is pinned in `bluesky/src/config.js`. Setup: repo secrets `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD`, plus an optional variable `BLUESKY_SKIP_CASES`.

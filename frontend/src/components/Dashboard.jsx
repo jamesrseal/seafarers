@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { STATUS_COLORS, statusLabel, RECENCY_LEGEND } from '../utils/statusColors';
+import CasesOverTime from './CasesOverTime';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -200,6 +201,9 @@ export default function Dashboard() {
             <RecencyBreakdown ships={ships} />
           </Section>
         </div>
+
+        {/* Cases over time: new cases (ILO dates) and status changes (refresh history) */}
+        <CasesOverTime ships={ships} />
 
         {/* Recently updated */}
         <Section title="Most recently updated cases">
