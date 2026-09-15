@@ -50,8 +50,8 @@ cd ../backend && npm start   # serves React build as static files on port 3001
 ## When the daily jobs run
 
 The data refresh and the Bluesky post start at times kept in two repository variables.
-| Variable | Starts | If unset |
-|---|---|---|
+| Variable | Starts |
+|---|---|
 | `REFRESH_TIME_UTC` | Refresh ILO data |
 | `POST_TIME_UTC` | Post to Bluesky |
 
