@@ -69,4 +69,4 @@ See `CLAUDE.md` for full architecture details and API reference.
 
 ## Contact
 
-James Seal · [Dare Mighty Data Solutions](https://www.daremightydata.com/) · [james@daremightydata.com](mailto:james@daremightydata.com)
+[abandonedseafarers@gmail.com](mailto:abandonedseafarers@gmail.com)
