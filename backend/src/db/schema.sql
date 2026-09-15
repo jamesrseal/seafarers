@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS ships (
   fishing_vessel       INTEGER DEFAULT 0,
   ilo_url              TEXT,
   vessel_finder_url    TEXT,
-  flag_url             TEXT,
+  flag_url             TEXT,  -- unused: the frontend draws flags from `flag`
   last_activity_date   TEXT
 );
 

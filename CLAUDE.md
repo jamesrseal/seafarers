@@ -26,6 +26,7 @@ Runs on port 3001.
 cd frontend
 npm run dev        # Vite dev server (proxies /api/* → localhost:3001)
 npm run build      # production build → frontend/dist/
+npm test           # node:test (Node 22+): every flag in the committed DB has an icon
 ```
 Runs on port 5173.
 
@@ -79,7 +80,7 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 | POST | `/api/scrapes/ingest` | Bulk ingest from scraper: `{ scraped_at, ships: [...] }`. Requires `Authorization: Bearer $INGEST_TOKEN` when `INGEST_TOKEN` is set; refused in production when it isn't |
 
 ### Scraper
-The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. IDs 1–1700 are iterated; missing/404 pages are silently skipped. Port geocoding uses `geopy.Nominatim` with the `cleaned_ports_list.csv` overrides (tilde-delimited). Flag image URLs come from `flag_urls.csv`. Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
+The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. IDs 1–1700 are iterated; missing/404 pages are silently skipped. Port geocoding uses `geopy.Nominatim` with the `cleaned_ports_list.csv` overrides (tilde-delimited). Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
 
 ### Frontend
 - `App.jsx` owns all state (filters, selected ship, view mode)
@@ -87,6 +88,7 @@ The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail pa
 - `useFilters` hook fetches `/api/ships/filters` once on mount
 - Map markers are Leaflet `CircleMarker`s — radius scales with `num_seafarers`, color by `ship_status`
 - Three view modes: Map, Map + Table (split), Table only
+- Flags are `flag-icons` SVGs, looked up from the ILO flag name in `src/utils/flags.js` and drawn by `FlagIcon.jsx` in the table, the ship detail and the dashboard's flag charts. A new or renamed ILO flag needs an entry there; `npm test` lists any the committed DB is missing. The `ships.flag_url` column is unused.
 - The Dashboard's two "over time" charts live in `CasesOverTime.jsx`, drawn as plain SVG (no chart library), each with a table view:
   - **New cases per month** comes from the ILO `notification_date`.
   - **Status changes per week** comes from `/api/ships/status-changes`.

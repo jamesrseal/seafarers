@@ -35,7 +35,6 @@ SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
 PORT_OVERRIDES_CSV = REPO_ROOT / "cleaned_ports_list.csv"
-FLAG_URLS_CSV = REPO_ROOT / "flag_urls.csv"
 
 GEOCODE_DELAY = 1.2   # seconds between Nominatim calls
 PAGE_DELAY = 0.8      # seconds between Playwright page loads
@@ -54,19 +53,6 @@ def load_port_overrides():
                     float(row['lat']), float(row['long'])
                 )
     return overrides
-
-
-def load_flag_urls():
-    flags = {}
-    if FLAG_URLS_CSV.exists():
-        with open(FLAG_URLS_CSV, newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                country = row.get('Country') or row.get('country', '').strip()
-                url = row.get('Flag URL') or row.get('flag_url', '').strip()
-                if country and url:
-                    flags[country] = url
-    return flags
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +181,6 @@ def parse_detail_page(html: str, abandonment_id: int) -> dict | None:
 # ---------------------------------------------------------------------------
 def scrape(start: int, end: int, api_url: str):
     port_overrides = load_port_overrides()
-    flag_urls = load_flag_urls()
     scraped_at = datetime.now(timezone.utc).isoformat()
 
     print(f"Starting scrape: IDs {start}–{end}  |  scraped_at={scraped_at}")
@@ -238,9 +223,6 @@ def scrape(start: int, end: int, api_url: str):
             lat, lon = geocode(record.get('port_of_abandonment', ''), port_overrides)
             record['port_latitude'] = lat
             record['port_longitude'] = lon
-
-            # Flag URL
-            record['flag_url'] = flag_urls.get(record.get('flag', ''), None)
 
             records.append(record)
             print(f"  [{aid}] {record.get('ship_name', '?')} — {record.get('port_of_abandonment', '?')}")

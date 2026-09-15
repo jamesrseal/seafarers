@@ -74,27 +74,6 @@ const MONITORED_FIELDS  = ['ship_name', 'port_of_abandonment', 'comments'];
 const BASE_URL = 'https://wwwex.ilo.org/dyn/r/abandonment/seafarers/details';
 
 // ---------------------------------------------------------------------------
-// Support data loaders  (port geocoding/overrides live in ./geocode)
-// ---------------------------------------------------------------------------
-function loadFlagUrls() {
-  const csv = path.join(__dirname, 'flag_urls.csv');
-  if (!fs.existsSync(csv)) return {};
-  const lines = fs.readFileSync(csv, 'utf8').split('\n');
-  if (lines.length < 2) return {};
-  const headers   = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const countryIdx = headers.findIndex(h => h === 'country');
-  const urlIdx     = headers.findIndex(h => h.includes('url'));
-  const flags = {};
-  for (const line of lines.slice(1)) {
-    const cols    = line.split(',');
-    const country = cols[countryIdx]?.trim();
-    const url     = cols[urlIdx]?.trim();
-    if (country && url) flags[country] = url;
-  }
-  return flags;
-}
-
-// ---------------------------------------------------------------------------
 // HTTP helpers
 // ---------------------------------------------------------------------------
 function fetchJson(url, extraHeaders = {}) {
@@ -207,7 +186,7 @@ function extractApexFields() {
 // Scrape one page — throws on network/timeout/HTTP-5xx/429 error (retriable),
 // returns null for a genuinely empty page (200 with no record)
 // ---------------------------------------------------------------------------
-async function scrapeOne(page, id, portOverrides, flagUrls) {
+async function scrapeOne(page, id, portOverrides) {
   const url = `${BASE_URL}?p3_abandonment_id=${id}`;
   const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
 
@@ -244,7 +223,6 @@ async function scrapeOne(page, id, portOverrides, flagUrls) {
     comments:            fields.comments,
     fishing_vessel:      /fishing/i.test(fields.vessel_type) ? 1 : 0,
     vessel_finder_url:   fields.vessel_finder_url,
-    flag_url:            flagUrls[fields.flag] || null,
     last_activity_date:  parseLastActivityDate(fields.comments),
   };
 }
@@ -252,11 +230,11 @@ async function scrapeOne(page, id, portOverrides, flagUrls) {
 // ---------------------------------------------------------------------------
 // Scrape one ID with retries — always returns null on permanent failure
 // ---------------------------------------------------------------------------
-async function scrapeWithRetry(browser, id, portOverrides, flagUrls) {
+async function scrapeWithRetry(browser, id, portOverrides) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const page = await browser.newPage();
     try {
-      const result = await scrapeOne(page, id, portOverrides, flagUrls);
+      const result = await scrapeOne(page, id, portOverrides);
       await page.close();
       return result; // null = empty page (not an error)
     } catch (e) {
@@ -276,12 +254,12 @@ async function scrapeWithRetry(browser, id, portOverrides, flagUrls) {
 // ---------------------------------------------------------------------------
 // Run batches over a list of IDs, logging hits and misses
 // ---------------------------------------------------------------------------
-async function runBatches(browser, ids, portOverrides, flagUrls) {
+async function runBatches(browser, ids, portOverrides) {
   const records = [];
   for (let i = 0; i < ids.length; i += CONCURRENCY) {
     const batch   = ids.slice(i, i + CONCURRENCY);
     const results = await Promise.all(
-      batch.map(id => scrapeWithRetry(browser, id, portOverrides, flagUrls))
+      batch.map(id => scrapeWithRetry(browser, id, portOverrides))
     );
     for (let j = 0; j < batch.length; j++) {
       const r = results[j];
@@ -300,7 +278,7 @@ async function runBatches(browser, ids, portOverrides, flagUrls) {
 // ---------------------------------------------------------------------------
 // Auto-extend: probe IDs beyond END until EMPTY_STREAK_LIMIT consecutive misses
 // ---------------------------------------------------------------------------
-async function autoExtend(browser, fromId, portOverrides, flagUrls) {
+async function autoExtend(browser, fromId, portOverrides) {
   console.log(`\nAuto-extending from ID ${fromId} (stops after ${EMPTY_STREAK_LIMIT} consecutive empty pages)…`);
   const records = [];
   let id           = fromId;
@@ -309,7 +287,7 @@ async function autoExtend(browser, fromId, portOverrides, flagUrls) {
   while (emptyStreak < EMPTY_STREAK_LIMIT) {
     const batch   = Array.from({ length: CONCURRENCY }, (_, i) => id + i);
     const results = await Promise.all(
-      batch.map(bid => scrapeWithRetry(browser, bid, portOverrides, flagUrls))
+      batch.map(bid => scrapeWithRetry(browser, bid, portOverrides))
     );
     for (let j = 0; j < batch.length; j++) {
       const r = results[j];
@@ -406,7 +384,6 @@ function sanityCheck(records, prev) {
 // ---------------------------------------------------------------------------
 async function main() {
   const portOverrides = loadPortOverrides();
-  const flagUrls      = loadFlagUrls();
   const scrapedAt     = new Date().toISOString();
 
   // The current snapshot is the sanity guard's baseline, and its coordinates
@@ -422,13 +399,13 @@ async function main() {
     console.log(`scraped_at: ${scrapedAt}\n`);
     const ids = await getOpenIds();
     console.log(`Fetched ${ids.length} open IDs from API\n`);
-    records = await runBatches(browser, ids, portOverrides, flagUrls);
+    records = await runBatches(browser, ids, portOverrides);
   } else {
     console.log(`Mode: range scan — IDs ${START}–${END} + auto-extend | concurrency=${CONCURRENCY}`);
     console.log(`scraped_at: ${scrapedAt}\n`);
     const ids = Array.from({ length: END - START + 1 }, (_, i) => START + i);
-    records = await runBatches(browser, ids, portOverrides, flagUrls);
-    const extended = await autoExtend(browser, END + 1, portOverrides, flagUrls);
+    records = await runBatches(browser, ids, portOverrides);
+    const extended = await autoExtend(browser, END + 1, portOverrides);
     records.push(...extended);
   }
 
