@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
 import { shipShareUrl } from '../utils/urlState';
 import { formatIloDate } from '../utils/formatDate';
+import FlagIcon from './FlagIcon';
 
 const MONTHS = {
   january:0, february:1, march:2, april:3, may:4, june:5,
@@ -111,12 +112,12 @@ export default function ShipDetail({ ship, onClose }) {
         <dl className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <Field label="Abandonment ID" value={ship.abandonment_id} />
           <Field label="IMO Number" value={ship.imo_number} />
-          <Field label="Flag" value={
+          <Field label="Flag" value={ship.flag ? (
             <span className="flex items-center gap-2">
-              {ship.flag_url && <img src={ship.flag_url} alt="" className="h-4" />}
+              <FlagIcon flag={ship.flag} height={15} />
               {ship.flag}
             </span>
-          } />
+          ) : null} />
           <Field label="Fishing Vessel" value={ship.fishing_vessel ? 'Yes' : 'No'} />
           <Field label="Port of Abandonment" value={ship.port_of_abandonment} full />
           <Field label="Abandonment Date" value={formatIloDate(ship.abandonment_date)} />

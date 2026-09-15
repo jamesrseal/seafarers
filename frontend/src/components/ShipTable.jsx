@@ -8,6 +8,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
 import { formatIloDate } from '../utils/formatDate';
+import FlagIcon from './FlagIcon';
 
 const MONTHS = {
   january:1, february:2, march:3, april:4, may:5, june:6,
@@ -41,7 +42,9 @@ const COLUMNS = [
   {
     accessorKey: 'flag',
     header: 'Flag',
-    cell: ({ getValue }) => getValue() || <span className="text-gray-400 italic">Unknown</span>,
+    cell: ({ getValue }) => getValue()
+      ? <><FlagIcon flag={getValue()} className="mr-1.5" />{getValue()}</>
+      : <span className="text-gray-400 italic">Unknown</span>,
   },
   { accessorKey: 'port_of_abandonment', header: 'Port' },
   { accessorKey: 'num_seafarers',       header: 'Seafarers' },

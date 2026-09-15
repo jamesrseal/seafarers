@@ -10,7 +10,7 @@ const FIELDS = [
   'ship_name', 'ship_status', 'flag', 'imo_number', 'port_of_abandonment',
   'port_latitude', 'port_longitude', 'abandonment_date', 'notification_date',
   'reporting_member', 'num_seafarers', 'circumstances', 'comments',
-  'fishing_vessel', 'ilo_url', 'vessel_finder_url', 'flag_url', 'last_activity_date',
+  'fishing_vessel', 'ilo_url', 'vessel_finder_url', 'last_activity_date',
 ];
 
 // null/undefined and '' are treated as equal; numbers compare by value.
@@ -65,14 +65,12 @@ router.post('/ingest', requireIngestToken, (req, res) => {
       abandonment_id, scraped_at, ship_name, ship_status, flag, imo_number,
       port_of_abandonment, port_latitude, port_longitude, abandonment_date,
       notification_date, reporting_member, num_seafarers, circumstances,
-      comments, fishing_vessel, ilo_url, vessel_finder_url, flag_url,
-      last_activity_date
+      comments, fishing_vessel, ilo_url, vessel_finder_url, last_activity_date
     ) VALUES (
       @abandonment_id, @scraped_at, @ship_name, @ship_status, @flag, @imo_number,
       @port_of_abandonment, @port_latitude, @port_longitude, @abandonment_date,
       @notification_date, @reporting_member, @num_seafarers, @circumstances,
-      @comments, @fishing_vessel, @ilo_url, @vessel_finder_url, @flag_url,
-      @last_activity_date
+      @comments, @fishing_vessel, @ilo_url, @vessel_finder_url, @last_activity_date
     )
   `);
 

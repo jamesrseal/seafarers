@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { STATUS_COLORS, statusLabel, RECENCY_LEGEND } from '../utils/statusColors';
 import CasesOverTime from './CasesOverTime';
+import FlagIcon from './FlagIcon';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -41,13 +42,16 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-function BarChart({ data, color = '#60a5fa' }) {
+function BarChart({ data, color = '#60a5fa', icon }) {
   const max = Math.max(...data.map(d => d.value), 1);
   return (
     <div className="space-y-1.5">
       {data.map(d => (
         <div key={d.name} className="flex items-center gap-2 text-xs">
-          <div className="w-36 text-right text-gray-600 truncate shrink-0" title={d.name}>{d.name}</div>
+          <div className="w-36 flex items-center justify-end gap-1.5 text-gray-600 shrink-0" title={d.name}>
+            <span className="truncate">{d.name}</span>
+            {icon?.(d.name)}
+          </div>
           <div className="flex-1 h-4 bg-gray-100 rounded overflow-hidden">
             <div
               className="h-full rounded transition-all duration-300"
@@ -233,10 +237,10 @@ export default function Dashboard() {
             <BarChart data={topCountries} color="#34d399" />
           </Section>
           <Section title="Flags by ships abandoned">
-            <BarChart data={topFlagsByShips} color="#f472b6" />
+            <BarChart data={topFlagsByShips} color="#f472b6" icon={name => <FlagIcon flag={name} />} />
           </Section>
           <Section title="Flags by seafarers abandoned">
-            <BarChart data={topFlagsBySeafarers} color="#fb923c" />
+            <BarChart data={topFlagsBySeafarers} color="#fb923c" icon={name => <FlagIcon flag={name} />} />
           </Section>
         </div>
 
