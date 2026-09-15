@@ -49,7 +49,9 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header />
-      {view !== 'report' && <FilterBar
+      {/* The report form and the dashboard don't use the filters (the dashboard
+          always counts every case), so the bar would only do nothing there. */}
+      {view !== 'report' && view !== 'dashboard' && <FilterBar
         filters={filters}
         setFilters={(f) => { setFilters(f); setHighlightedShip(null); }}
         ships={ships}
