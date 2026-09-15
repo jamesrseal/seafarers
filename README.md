@@ -57,12 +57,67 @@ Run it on demand from **Actions → Refresh ILO data → Run workflow** (full sc
 
 The live site's `POST /api/scrapes/ingest` requires the `INGEST_TOKEN` set in Render and refuses writes without it; the daily refresh doesn't use it.
 
+## Daily Bluesky post
+
+`.github/workflows/post-bluesky.yml` posts one abandonment case a day, at 13:41 UTC, to [@abandonedseafarers.bsky.social](https://bsky.app/profile/abandonedseafarers.bsky.social). The code is in `bluesky/`: Node 22.13+, no dependencies.
+
+**Nothing in a post is written freehand.** Each post is a fixed template filled from the case's record in the committed database: ship name, flag, crew count, port, abandonment date and the site's status label. Most posts also carry whole sentences quoted word for word from the case's circumstances and its latest dated update. For example:
+
+```
+Bird 16 (Comoros flag): 15 seafarers abandoned in Mersin, Türkiye, on 1 September 2024.
+
+“2 Indian Officers have 4 months of unpaid salary.”
+
+Latest update, 15 June 2025: “The 3 crew members who complained confirmed that they received their outstanding wages.”
+
+Status: Resolved · ILO record
+```
+
+The ship name links to the case on abandonedseafarers.org, "ILO record" links to the ILO page, and a link card points back to the site.
+
+Some sentences are never quoted:
+- ones that name or redact a person, carry contact details, or mention a death or someone's medical condition;
+- first- or second-person sentences;
+- routine correspondence or corrections to the database;
+- anything from a letter relayed by a flag state or a seafarer.
+
+When nothing is quotable, the post is just the facts and the links.
+
+Before anything is published, a grounding check re-verifies the draft against the record. Every quote must be verbatim, every number must appear in the record, and the links must be exactly this case's. If the check fails, nothing is posted.
+
+**Which case.** Any case can be picked. Unresolved and Disputed cases are three times as likely as the rest, and no case is posted twice until every case has been. The workflow never commits, because a push to `master` redeploys Render. Instead, it works out what has already been posted by reading the account's own posts. That means:
+- deleting a post makes its case eligible again;
+- to keep a case out for good, add its ID to the repository variable `BLUESKY_SKIP_CASES` (comma-separated);
+- at most one case is posted per UTC day.
+
+Before posting, it waits until the site is serving that case, so the link works.
+
+**Setup, once.**
+1. Create an app password in Bluesky under **Settings → Privacy and security → App passwords**.
+2. Add the repository secrets `BLUESKY_HANDLE` (`abandonedseafarers.bsky.social`) and `BLUESKY_APP_PASSWORD`.
+
+**Running it by hand.** Use **Actions → Post to Bluesky → Run workflow**:
+- `dry_run` is ticked by default. It composes and verifies the post and shows it in the run summary, without publishing.
+- `case_id` posts a specific case.
+- `allow_second_post` overrides the once-a-day limit.
+
+Runs from any branch other than `master` are always dry runs. Locally:
+
+```bash
+cd bluesky
+node post.js --dry-run --case 1821     # preview one case
+node post.js --dry-run --seed 7        # preview a reproducible random pick
+npm run check-all -- --sample 10       # compose and verify every case; print 10
+npm test
+```
+
 ## Project Structure
 
 ```
 backend/   Node.js/Express API + SQLite
 frontend/  React + Vite + Tailwind CSS + Leaflet
 scraper/   Python + Playwright scraper
+bluesky/   Daily Bluesky post (Node.js, no dependencies)
 ```
 
 See `CLAUDE.md` for full architecture details and API reference.

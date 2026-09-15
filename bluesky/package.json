@@ -1,0 +1,15 @@
+{
+  "name": "seafarers-bluesky",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Posts one ILO abandonment case a day to @abandonedseafarers.bsky.social",
+  "main": "post.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "post": "node --disable-warning=ExperimentalWarning post.js",
+    "test": "node --disable-warning=ExperimentalWarning --test",
+    "check-all": "node --disable-warning=ExperimentalWarning post.js --check-all"
+  }
+}

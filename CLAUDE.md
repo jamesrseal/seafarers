@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A dashboard for the ILO Abandoned Seafarers database. Three components:
+A dashboard for the ILO Abandoned Seafarers database. Four components:
 
 - **`backend/`** — Node.js/Express REST API + SQLite (via `better-sqlite3`)
 - **`frontend/`** — React 18 + Vite + Tailwind CSS + React Leaflet
 - **`scraper/`** — Python + Playwright scraper for the ILO AJAX website
+- **`bluesky/`** — daily post of one case to @abandonedseafarers.bsky.social (Node 22.13+, no dependencies)
 
 ## Commands
 
@@ -73,6 +74,38 @@ The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail pa
 - `useFilters` hook fetches `/api/ships/filters` once on mount
 - Map markers are Leaflet `CircleMarker`s — radius scales with `num_seafarers`, color by `ship_status`
 - Three view modes: Map, Map + Table (split), Table only
+
+### Bluesky poster
+`.github/workflows/post-bluesky.yml` runs `bluesky/post.js` daily at 13:41 UTC, and on demand (off `master` always as a dry run). It picks one case, composes a post, verifies it and publishes it to @abandonedseafarers.bsky.social. The account's DID is pinned in `bluesky/src/config.js`. Setup: repo secrets `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD`, plus an optional variable `BLUESKY_SKIP_CASES`.
+
+- `src/load.js`: latest row per case from the committed DB, read-only, via Node's built-in `node:sqlite`. Don't go through `backend/src/db/database.js`, which writes on open.
+- `src/feed.js`: already-posted case IDs, read back from the account's own records (`?ship=<id>` in the link card or a link facet).
+- `src/select.js`: weighted pick (Unresolved and Disputed ×3) among the least-posted cases.
+- `src/parse.js`, `src/sentences.js`, `src/eligibility.js`: circumstances and dated updates, sentence splitting, and what may be quoted.
+- `src/compose.js`: template, best-fit layout under 300 graphemes, link facets (UTF-8 byte offsets), link card.
+- `src/verify.js`: the grounding check, run before every publish.
+- `src/bluesky.js`, `src/site.js`: the fetch client, and the wait until the site serves the case before linking to it.
+
+Rules for changing it:
+- **Never commit from the workflow.** A push to master redeploys Render. Posting state lives in the account's posts.
+- **Nothing fabricated.** Every character must be one of:
+  - a template literal (`TEMPLATE_LITERALS`);
+  - a record field;
+  - the site's status label;
+  - a verbatim quote.
+
+  `verify.js` checks each part and then re-checks the finished text on its own. Don't add wording that asserts an outcome or a timeline ("still waiting", "stranded"), and don't paraphrase.
+- Status wording comes from `frontend/src/utils/statusColors.js`. `test/drift.test.js` fails if the two diverge.
+- The update-date regex in `src/parse.js` is anchored to line starts on purpose. The site's and scraper's version also matches mid-sentence dates (79 cases).
+- A new quoting rule goes in `src/eligibility.js` with a test. Run `npm run check-all -- --sample 20` against the real DB and read the output before and after.
+- `createRecord` is never retried blind. After an ambiguous failure, the poster re-lists its posts before trying again.
+
+```bash
+cd bluesky
+node post.js --dry-run --case 1821     # preview; no login needed
+npm run check-all -- --sample 20       # compose + verify every case
+npm test                               # node:test, no dependencies
+```
 
 ## Ship Status Color Coding
 - `Inactive` → blue (`#bbc2e2`)
