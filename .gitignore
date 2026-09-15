@@ -17,6 +17,9 @@ backend/data/*.json
 backend/data/*.db-shm
 backend/data/*.db-wal
 
+# Bluesky poster output (uploaded as a workflow artifact, never committed)
+bluesky/draft.json
+
 # Playwright debug artifacts
 scraper/page_*.html
 scraper/scraped_*.json

@@ -1,0 +1,79 @@
+name: Post to Bluesky
+
+# Posts one ILO abandonment case a day to @abandonedseafarers.bsky.social, from
+# the committed backend/data/seafarers.db. It NEVER commits: a push to master
+# redeploys Render. Which cases were already posted is read back from the
+# account's own posts, so there is no state to keep anywhere.
+#
+# Its own concurrency group, deliberately not refresh-data's: a checkout only
+# ever sees a fully committed database, and sharing a group would let a queued
+# post cancel a queued refresh.
+
+on:
+  schedule:
+    - cron: '41 13 * * *' # 13:41 UTC: 09:41 New York, 14:41 London, 21:41 Manila; off the hour
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Compose and verify the post, but don't publish it
+        type: boolean
+        default: true
+      case_id:
+        description: Post this abandonment ID instead of a random pick (leave blank for random)
+        type: string
+        default: ''
+      allow_second_post:
+        description: Post even if a case was already posted today (UTC)
+        type: boolean
+        default: false
+
+concurrency:
+  group: post-bluesky
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      # No install step: the poster has no dependencies. It reads the database
+      # with Node's built-in node:sqlite (22.13+) and talks to Bluesky with fetch.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Test
+        run: npm test --prefix bluesky
+
+      - name: Compose and post
+        working-directory: bluesky
+        env:
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          BLUESKY_SKIP_CASES: ${{ vars.BLUESKY_SKIP_CASES }}
+          # Scheduled runs publish. A dispatched run publishes only from master
+          # with dry_run unticked; from any other branch it is always a dry run.
+          DRY_RUN: ${{ (github.ref != 'refs/heads/master' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)) && '1' || '' }}
+          CASE_ID: ${{ inputs.case_id }}
+          ALLOW_SECOND_POST: ${{ inputs.allow_second_post && '1' || '' }}
+        run: |
+          args=(--db ../backend/data/seafarers.db --out draft.json --summary "$GITHUB_STEP_SUMMARY")
+          if [ -n "$DRY_RUN" ]; then args+=(--dry-run); fi
+          if [ -n "$CASE_ID" ]; then args+=(--case "$CASE_ID"); fi
+          if [ -n "$ALLOW_SECOND_POST" ]; then args+=(--allow-second-post); fi
+          # node:sqlite still prints an ExperimentalWarning on Node 22; it is noise here.
+          node --disable-warning=ExperimentalWarning post.js "${args[@]}"
+
+      - name: Upload draft
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bluesky-draft
+          path: bluesky/draft.json
+          if-no-files-found: ignore
+          retention-days: 14
