@@ -68,6 +68,29 @@ router.get('/', (req, res) => {
   res.json(ships);
 });
 
+// Every status change the refreshes have recorded: consecutive history rows of
+// one ship whose status differs. History only goes back to the first scrape
+// run, so this is what the site has seen, not every change the ILO ever made.
+// previous_scraped_at is when the old status was last seen, so a change found
+// after a gap in refreshes can be dated honestly as "some time since then".
+// Declared before /:abandonment_id, which would otherwise take the path.
+router.get('/status-changes', (req, res) => {
+  const runs = db.prepare(`SELECT scraped_at FROM scrape_runs ORDER BY scraped_at`).all().map(r => r.scraped_at);
+  const rows = db.prepare(
+    `SELECT abandonment_id, scraped_at, ship_status FROM ships ORDER BY abandonment_id, scraped_at`
+  ).all();
+  const changes = [];
+  for (let i = 1; i < rows.length; i++) {
+    const prev = rows[i - 1];
+    const row = rows[i];
+    if (prev.abandonment_id !== row.abandonment_id) continue;
+    const from = prev.ship_status ?? '';
+    const to = row.ship_status ?? '';
+    if (from !== to) changes.push({ scraped_at: row.scraped_at, previous_scraped_at: prev.scraped_at, from, to });
+  }
+  res.json({ runs, changes });
+});
+
 // Faceted option lists with result counts. Each facet is counted with every
 // filter applied EXCEPT its own, so the options show what's still available
 // given the other selections, and each "total" is the count with that facet
