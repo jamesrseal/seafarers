@@ -37,7 +37,7 @@ export default function Header() {
         <div>
           <h1 className="text-2xl font-light tracking-wide">Abandoned Seafarers</h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            ILO database of abandoned seafarer cases &mdash;{' '}
+            Visualizing the ILO database of abandoned seafarer cases &mdash;{' '}
             <a
               href="https://wwwex.ilo.org/dyn/r/abandonment/seafarers/search"
               target="_blank"
@@ -54,6 +54,15 @@ export default function Header() {
               className="text-blue-400 hover:text-blue-300 underline"
             >
               GitHub
+            </a>
+            {' '}&mdash;{' '}
+            <a
+              href="mailto:abandonedseafarers@gmail.com"
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              Contact
             </a>
           </p>
         </div>
