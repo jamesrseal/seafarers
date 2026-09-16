@@ -1,0 +1,4 @@
+# Cards rendered while working on the template. The one that gets posted is
+# rendered in the job that posts it and is never committed.
+card-*.jpg
+card-*.html
