@@ -49,12 +49,11 @@ cd ../backend && npm start   # serves React build as static files on port 3001
 
 ## When the daily jobs run
 
-The data refresh and the Bluesky post start at times kept in two repository variables, under **Settings → Secrets and variables → Actions → Variables**. Changing one needs no commit and no redeploy.
-
-| Variable | Starts | If unset |
-|---|---|---|
-| `REFRESH_TIME_UTC` | Refresh ILO data | 05:23 |
-| `POST_TIME_UTC` | Post to Bluesky | 13:41 |
+The data refresh and the Bluesky post start at times kept in two repository variables.
+| Variable | Starts |
+|---|---|
+| `REFRESH_TIME_UTC` | Refresh ILO data |
+| `POST_TIME_UTC` | Post to Bluesky |
 
 Each is a UTC time written `HH:MM`, or `off` to pause that job. From a terminal: `gh variable set POST_TIME_UTC --body 14:00`.
 
