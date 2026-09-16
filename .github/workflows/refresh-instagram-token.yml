@@ -1,0 +1,63 @@
+name: Refresh the Instagram token
+
+# An Instagram long-lived token lasts 60 days. It can be refreshed as often as
+# you like, but only while it is still alive and at least 24 hours old: miss
+# the window and it is dead for good, posting fails with error 190, and someone
+# has to authorise the app again in a browser. Nothing warns you beforehand,
+# which is why this runs on its own rather than at the moment a post fails.
+#
+# Twice a month, so a single failed run is not the end of the token.
+#
+# This one keeps a cron of its own, unlike the daily jobs: its time is not
+# something anyone wants to change from the Settings page, and the scheduler
+# exists for jobs whose time is a repository variable.
+#
+# Writing the refreshed token back needs a token that may write secrets.
+# GITHUB_TOKEN cannot — there is no secrets scope — so ACTIONS_SECRET_PAT holds
+# a fine-grained personal access token with "Secrets: read and write" on this
+# repository, and nothing else.
+
+on:
+  schedule:
+    - cron: '19 4 1,15 * *'
+  workflow_dispatch:
+    inputs:
+      set_secret:
+        description: Write the refreshed token back to the INSTAGRAM_ACCESS_TOKEN secret
+        type: boolean
+        default: true
+
+concurrency:
+  group: refresh-instagram-token
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Only the poster: a full checkout would download the 25 MB database to
+      # make one API call.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: instagram
+          filter: blob:none
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Refresh the token
+        working-directory: instagram
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.ACTIONS_SECRET_PAT }}
+          # A scheduled run always writes it back; a dispatched one is asked.
+          SET_SECRET: ${{ github.event_name == 'schedule' || inputs.set_secret }}
+        run: |
+          args=(--summary "$GITHUB_STEP_SUMMARY")
+          if [ "$SET_SECRET" = true ]; then args+=(--set-secret); fi
+          node refresh-token.js "${args[@]}"

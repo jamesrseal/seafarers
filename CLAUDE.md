@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A dashboard for the ILO Abandoned Seafarers database. Four components:
+A dashboard for the ILO Abandoned Seafarers database. Five components:
 
 - **`backend/`** — Node.js/Express REST API + SQLite (via `better-sqlite3`)
 - **`frontend/`** — React 18 + Vite + Tailwind CSS + React Leaflet
 - **`scraper/`** — Python + Playwright scraper for the ILO AJAX website
 - **`bluesky/`** — daily post of one case to @abandonedseafarers.bsky.social (Node 22.13+, no dependencies)
+- **`instagram/`** — the same case drawn as a card and posted to @abandonedseafarers (Node 22.13+, no dependencies)
 
 ## Commands
 
@@ -56,11 +57,12 @@ The `GET /api/ships` query selects only the most recent row per `abandonment_id`
 ### Scheduler
 `.github/workflows/scheduler.yml` runs every half hour and calls `.github/scripts/dispatch-due.sh` once per daily workflow. It starts that workflow once the time in its repository variable has passed, unless a run has been created since:
 - `REFRESH_TIME_UTC` (default 05:23) starts the refresh;
-- `POST_TIME_UTC` (default 13:41) starts the Bluesky post.
+- `POST_TIME_UTC` (default 13:41) starts the Bluesky post;
+- `INSTAGRAM_TIME_UTC` (default 15:17) starts the Instagram post.
 
 Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight, so a late tick never skips a day.
-- **Why it exists:** `schedule:` can't read `vars`. Don't put a `schedule:` back on refresh-data.yml or post-bluesky.yml, or they will run twice.
-- **Dry runs don't count.** A run counts as done unless its run name ends "(dry run)". Both workflows set `run-name` for exactly this, so keep it in step with their dry-run logic.
+- **Why it exists:** `schedule:` can't read `vars`. Don't put a `schedule:` back on refresh-data.yml, post-bluesky.yml or post-instagram.yml, or they will run twice. (refresh-instagram-token.yml keeps a cron of its own: nobody needs to change its time from the Settings page.)
+- **Dry runs don't count.** A run counts as done unless its run name ends "(dry run)". Each of those workflows sets `run-name` for exactly this, so keep it in step with their dry-run logic.
 - **Permissions:** dispatching needs `permissions: actions: write`. `GITHUB_TOKEN` is allowed to start `workflow_dispatch` runs; that is the exception to its "no new runs" rule.
 - **Posts need `dry_run=false`.** A dispatched post is a dry run without it.
 - **Testing:** test the script locally with a stub `gh` on PATH and `NOW=<epoch seconds>`.
@@ -124,6 +126,32 @@ Rules for changing it:
 cd bluesky
 node post.js --dry-run --case 1821     # preview; no login needed
 npm run check-all -- --sample 20       # compose + verify every case
+npm test                               # node:test, no dependencies
+```
+
+### Instagram poster
+`.github/workflows/post-instagram.yml` runs `instagram/post.js` once a day, when the scheduler starts it at `INSTAGRAM_TIME_UTC`, and on demand (off `master` always as a dry run). Instagram takes no text-only post, so the case is drawn as a 1080x1350 JPEG and published with the post's own words as the caption. It picks its own case, the same way the Bluesky poster does, so the two accounts don't have to stay in step.
+
+- `src/card.js`: the card's HTML — the case over a public-domain photograph of open sea, with the map's status colour as its only accent. `render-card.js` photographs it with headless Chrome (already on the runner), which writes JPEG — the only format Instagram takes — when the file ends `.jpg`.
+- `src/caption.js`: the caption and the alt text. The caption is the Bluesky post's text minus " · ILO record", which a caption can't make clickable; two lines and four hashtags are added. The alt text names the case, and that naming *is* the state.
+- `src/feed.js`: already-posted case IDs, read back from the account's own captions and alt text. Instagram has no per-post metadata field.
+- `src/upload.js`: Instagram fetches the image itself, so the card goes to an asset on this repo's `instagram-cards` release first. Not to the site (Render's free instances sleep, and a cold start can outrun Meta's fetch) and not to master (a commit there redeploys).
+- `src/instagram.js`: the API client. `src/config.js` pins the Graph API version and the account username; Meta retires a version about two years after release.
+- `refresh-token.js` and `.github/workflows/refresh-instagram-token.yml`: the token lasts 60 days and is refreshed twice a month. Miss the window and it is dead for good — a browser re-authorisation, not a retry.
+
+Rules for changing it:
+- **The same grounding rules as the Bluesky poster.** The card and caption are built from the composed post's segments, so every word has already been through `verify.js`. Don't add wording to `CARD_LITERALS` or `CAPTION_LITERALS` that asserts an outcome or a timeline.
+- **More room, not different words.** `COMPOSE_MAX_GRAPHEMES` (700) is passed to both `composePost` and `verifyDraft`, so the flag and both quotes survive where Bluesky has to drop one. Bluesky still composes and verifies at 300.
+- **The fonts are committed** because a runner has almost none: without them "Türkiye" renders as boxes. A quote whose characters the fonts lack is left off the card (`src/renderable.js`), and `assets/fonts/fonts.json` is what decides that.
+- **Never commit from the workflow.** A release asset is not a commit, which is the point of uploading there.
+- `createContainer` may be retried; `publish` never is. After an ambiguous failure the poster re-lists its own posts before trying again.
+
+Setup: repo secrets `INSTAGRAM_ACCESS_TOKEN` and `INSTAGRAM_USER_ID` (Instagram API with Instagram Login: the account must be Business or Creator, and no Facebook Page is needed), `ACTIONS_SECRET_PAT` for the token refresh (`GITHUB_TOKEN` has no secrets scope), plus optional variables `INSTAGRAM_SKIP_CASES` and `INSTAGRAM_TIME_UTC`.
+
+```bash
+cd instagram
+node post.js --dry-run --case 1820     # compose, draw the card, post nothing
+node render-card.js --case 1820        # just the card
 npm test                               # node:test, no dependencies
 ```
 

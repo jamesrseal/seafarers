@@ -5,6 +5,7 @@ name: Scheduler
 #
 #   REFRESH_TIME_UTC   Refresh ILO data   (05:23 if unset)
 #   POST_TIME_UTC      Post to Bluesky    (13:41 if unset)
+#   INSTAGRAM_TIME_UTC Post to Instagram  (15:17 if unset)
 #
 # Each is HH:MM in UTC, or "off" to pause that workflow. Set them under
 # Settings -> Secrets and variables -> Actions -> Variables, or with
@@ -54,10 +55,12 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
           REFRESH_TIME_UTC: ${{ vars.REFRESH_TIME_UTC || '05:23' }}
           POST_TIME_UTC: ${{ vars.POST_TIME_UTC || '13:41' }}
+          INSTAGRAM_TIME_UTC: ${{ vars.INSTAGRAM_TIME_UTC || '15:17' }}
         run: |
-          # Both are checked even if the first fails; the run fails if either did.
+          # All are checked even if an earlier one fails; the run fails if any did.
           status=0
           bash .github/scripts/dispatch-due.sh REFRESH_TIME_UTC refresh-data.yml "$REFRESH_TIME_UTC" || status=1
           # dry_run=false: a dispatched post is otherwise a dry run.
           bash .github/scripts/dispatch-due.sh POST_TIME_UTC post-bluesky.yml "$POST_TIME_UTC" -f dry_run=false || status=1
+          bash .github/scripts/dispatch-due.sh INSTAGRAM_TIME_UTC post-instagram.yml "$INSTAGRAM_TIME_UTC" -f dry_run=false || status=1
           exit "$status"
