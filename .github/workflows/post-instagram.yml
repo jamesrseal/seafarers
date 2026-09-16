@@ -1,0 +1,97 @@
+name: Post to Instagram
+# The scheduler counts every run of this workflow as the day's post, except one
+# whose name ends "(dry run)". Keep this in step with DRY_RUN below.
+run-name: "Post to Instagram${{ (github.ref != 'refs/heads/master' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)) && ' (dry run)' || '' }}"
+
+# Posts one ILO abandonment case a day to @abandonedseafarers on Instagram,
+# from the committed backend/data/seafarers.db — the same case the Bluesky
+# poster would pick, chosen the same way, but picked independently so the two
+# accounts don't have to stay in step.
+#
+# Instagram has no text-only post, so the case is drawn as a card by headless
+# Chrome (already on the runner), uploaded as an asset on this repo's
+# "instagram-cards" release, and published from there: Instagram fetches the
+# image itself and needs a URL anyone can reach.
+#
+# It NEVER commits. A release asset is not a commit to master, so nothing here
+# redeploys Render. Which cases have been posted is read back from the
+# account's own captions and alt text, so there is no state to keep anywhere.
+#
+# There is no schedule here: scheduler.yml starts this once a day, with
+# dry_run=false, at the time in the INSTAGRAM_TIME_UTC repository variable.
+# Adding a schedule back would post twice as often as intended.
+#
+# Secrets: INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID, from the Meta app.
+# The token lasts 60 days; refresh-instagram-token.yml keeps it alive.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Compose, verify and draw the card, but don't publish it
+        type: boolean
+        default: true
+      case_id:
+        description: Post this abandonment ID instead of a random pick (leave blank for random)
+        type: string
+        default: ''
+      allow_second_post:
+        description: Post even if a case was already posted today (UTC)
+        type: boolean
+        default: false
+
+concurrency:
+  group: post-instagram
+  cancel-in-progress: false
+
+permissions:
+  contents: write # upload the card as a release asset; nothing is committed
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      # No install step: the poster has no dependencies. It reads the database
+      # with Node's built-in node:sqlite (22.13+), draws the card with the
+      # runner's own Chrome, and talks to Instagram with fetch.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Test
+        run: npm test --prefix instagram
+
+      - name: Compose, draw and post
+        working-directory: instagram
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          INSTAGRAM_SKIP_CASES: ${{ vars.INSTAGRAM_SKIP_CASES }}
+          GH_TOKEN: ${{ github.token }} # for `gh release upload`
+          # Scheduled runs publish. A dispatched run publishes only from master
+          # with dry_run unticked; from any other branch it is always a dry run.
+          DRY_RUN: ${{ (github.ref != 'refs/heads/master' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)) && '1' || '' }}
+          CASE_ID: ${{ inputs.case_id }}
+          ALLOW_SECOND_POST: ${{ inputs.allow_second_post && '1' || '' }}
+        run: |
+          args=(--db ../backend/data/seafarers.db --card card.jpg --out draft.json --summary "$GITHUB_STEP_SUMMARY")
+          # A dry run still draws the card; it just has nowhere to send it.
+          if [ -n "$DRY_RUN" ]; then args+=(--dry-run); else args+=(--upload); fi
+          if [ -n "$CASE_ID" ]; then args+=(--case "$CASE_ID"); fi
+          if [ -n "$ALLOW_SECOND_POST" ]; then args+=(--allow-second-post); fi
+          # node:sqlite still prints an ExperimentalWarning on Node 22; it is noise here.
+          node --disable-warning=ExperimentalWarning post.js "${args[@]}"
+
+      - name: Upload the draft and the card
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: instagram-draft
+          path: |
+            instagram/draft.json
+            instagram/card.jpg
+          if-no-files-found: ignore
+          retention-days: 14
