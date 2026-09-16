@@ -66,6 +66,14 @@ test('catches a link card that was not built from the record', () => {
   assertCaught(tampered(nikolayMeshkov, d => { d.card.description += ' · 40 seafarers'; }), /link card's number 40/);
 });
 
+test('the grapheme cap is Bluesky\'s 300 unless the caller sets another', () => {
+  const draft = composePost(nikolayMeshkov);
+  assert.deepEqual(verifyDraft(draft, nikolayMeshkov), []);
+  assert.deepEqual(verifyDraft(draft, nikolayMeshkov, { maxGraphemes: 700 }), []);
+  assertCaught(verifyDraft(draft, nikolayMeshkov, { maxGraphemes: 10 }), /graphemes, over 10/);
+  assert.throws(() => assertGrounded(draft, nikolayMeshkov, { maxGraphemes: 10 }), /graphemes, over 10/);
+});
+
 test('assertGrounded throws with every problem listed', () => {
   const draft = structuredClone(composePost(nikolayMeshkov));
   draft.card.title = 'Something else';

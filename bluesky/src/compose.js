@@ -114,7 +114,7 @@ function beats(a, b) {
 // x update quote (or none), and keeps the best one that fits. In effect, when
 // over budget, the flag goes first, then trailing sentences, then one whole
 // quote, then both. Ship, crew, port, date, status and the ILO link never go.
-function chooseLayout(ship, options) {
+function chooseLayout(ship, options, maxGraphemes) {
   const { circumstances, update, updates } = options;
   const footer = footerSegments(ship);
   const circumstancesOverhead = widthOf(circumstancesSegments({ text: '' }));
@@ -133,7 +133,7 @@ function chooseLayout(ship, options) {
         const width = fixed
           + (c ? circumstancesOverhead + c.graphemes : 0)
           + (u ? updateOverhead + u.graphemes : 0);
-        if (width > POST_MAX_GRAPHEMES) continue;
+        if (width > maxGraphemes) continue;
         const score = [
           (c ? 1 : 0) + (u ? 1 : 0),
           // Where things stand: the latest update for an open case; for a resolved
@@ -186,11 +186,14 @@ function buildCard(ship) {
   };
 }
 
-function composePost(ship) {
+// maxGraphemes is Bluesky's 300 unless a caller says otherwise. The Instagram
+// card and caption have more room, and pass their own, so the flag and both
+// quotes survive on cases where a Bluesky post has to drop one.
+function composePost(ship, { maxGraphemes = POST_MAX_GRAPHEMES } = {}) {
   const options = quoteOptions(ship);
-  const layout = chooseLayout(ship, options);
+  const layout = chooseLayout(ship, options, maxGraphemes);
   if (!layout) {
-    throw new Error(`case ${ship.abandonment_id}: the header and status line alone exceed ${POST_MAX_GRAPHEMES} graphemes`);
+    throw new Error(`case ${ship.abandonment_id}: the header and status line alone exceed ${maxGraphemes} graphemes`);
   }
 
   const segments = [
@@ -203,8 +206,8 @@ function composePost(ship) {
   // chooseLayout adds up the parts; recount the real text in case a join merged
   // two graphemes into one cluster.
   const graphemes = graphemeLength(text);
-  if (graphemes > POST_MAX_GRAPHEMES) {
-    throw new Error(`case ${ship.abandonment_id}: composed ${graphemes} graphemes, over ${POST_MAX_GRAPHEMES}`);
+  if (graphemes > maxGraphemes) {
+    throw new Error(`case ${ship.abandonment_id}: composed ${graphemes} graphemes, over ${maxGraphemes}`);
   }
 
   return {

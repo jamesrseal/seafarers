@@ -24,5 +24,10 @@ bluesky/draft.json
 scraper/page_*.html
 scraper/scraped_*.json
 
+# Agent worktrees: isolated checkouts of this repo. Their commits live on
+# branches, so nothing here needs tracking — and committing one would add a
+# second copy of the whole repo.
+.claude/worktrees/
+
 # OS
 .DS_Store

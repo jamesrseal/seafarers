@@ -26,7 +26,10 @@ function digitRuns(ship, fields) {
   return runs;
 }
 
-function verifyDraft(draft, ship) {
+// maxGraphemes is Bluesky's 300 unless a caller raises it, the way composePost
+// takes it: the Instagram card and caption have more room and check against
+// their own budget. Every other check here is the same whatever the budget.
+function verifyDraft(draft, ship, { maxGraphemes = POST_MAX_GRAPHEMES } = {}) {
   const problems = [];
   const id = String(ship.abandonment_id ?? '');
   if (!/^\d+$/.test(id)) problems.push(`abandonment_id ${show(id)} is not numeric`);
@@ -86,7 +89,7 @@ function verifyDraft(draft, ship) {
   if (/[“”]/.test(outsideQuotes)) problems.push('a quotation mark is unpaired');
   if (/\b(?:undefined|null|NaN)\b|(?:^|\D)0 seafarers/.test(outsideQuotes)) problems.push('the text contains a missing-value placeholder');
   const graphemes = graphemeLength(draft.text);
-  if (graphemes > POST_MAX_GRAPHEMES) problems.push(`${graphemes} graphemes, over ${POST_MAX_GRAPHEMES}`);
+  if (graphemes > maxGraphemes) problems.push(`${graphemes} graphemes, over ${maxGraphemes}`);
   if (byteLength(draft.text) > POST_MAX_BYTES) problems.push(`${byteLength(draft.text)} bytes, over ${POST_MAX_BYTES}`);
 
   // 3. Links: exactly the site's case page and the ILO record, on the right words.
@@ -119,8 +122,8 @@ function verifyDraft(draft, ship) {
   return problems;
 }
 
-function assertGrounded(draft, ship) {
-  const problems = verifyDraft(draft, ship);
+function assertGrounded(draft, ship, options) {
+  const problems = verifyDraft(draft, ship, options);
   if (problems.length) {
     const error = new Error(`case ${ship.abandonment_id} failed the grounding check:\n  - ${problems.join('\n  - ')}`);
     error.problems = problems;

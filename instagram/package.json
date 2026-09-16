@@ -1,0 +1,13 @@
+{
+  "name": "seafarers-instagram",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Renders the card image for one ILO abandonment case, for posting to @abandonedseafarers on Instagram",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "card": "node --disable-warning=ExperimentalWarning render-card.js",
+    "test": "node --disable-warning=ExperimentalWarning --test"
+  }
+}
