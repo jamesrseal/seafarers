@@ -2,9 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ensure Leaflet tiles render above nothing */
+/* OpenStreetMap's sea colour, so map background showing before tiles load, or
+   in the stray pixel Leaflet can leave at the world's Pacific edge, reads as water */
 .leaflet-container {
-  background: #a8c8e8;
+  background: #aad3df;
 }
 
 /* Hide the scrollbar on the horizontally-scrollable view-toggle row */

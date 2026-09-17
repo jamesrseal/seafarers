@@ -8,9 +8,20 @@ const SIZE_EXAMPLES = [
   { label: '100+', r: markerRadius(100) },
 ];
 
-// One copy of the world. Tiles don't repeat past it and panning stops at its
-// edges, so the markers can't be dragged out of view.
+// One copy of the world: panning stops at its edges, so the markers can't be
+// dragged out of view. The tiles still wrap because Leaflet lets the view
+// overshoot a bound by up to 1px, and that pixel should look like map.
 const WORLD_BOUNDS = [[-85, -180], [85, 180]];
+
+// The lowest zoom at which the world covers the whole map, leaving no empty
+// margin beside or above it. Fractional, so the world fits the map exactly.
+function coverZoom(map) {
+  const [[south, west], [north, east]] = WORLD_BOUNDS;
+  const nw = map.project([north, west], 0);
+  const se = map.project([south, east], 0);
+  const size = map.getSize();
+  return Math.log2(Math.max(size.x / (se.x - nw.x), size.y / (se.y - nw.y)));
+}
 
 function MapLegend() {
   const [open, setOpen] = useState(false);
@@ -91,6 +102,35 @@ function MapController({ ship, view, portFilter, countryFilter, ships }) {
   useEffect(() => { map.invalidateSize(); }, [view]);
 
   useEffect(() => {
+    // Leaflet rounds every zoom to a whole level, which puts a fractional
+    // minimum out of reach whenever it rounds up (2.9 → 3). Treat the minimum
+    // as a level of its own and snap to whichever is nearer.
+    const limitZoom = map._limitZoom;
+    map._limitZoom = function (zoom) {
+      const limited = limitZoom.call(this, zoom);
+      const min = this.getMinZoom();
+      return Math.abs(zoom - min) < Math.abs(zoom - limited) ? min : limited;
+    };
+
+    const fit = () => {
+      const size = map.getSize();
+      if (!size.x || !size.y) return;
+      const zoom = coverZoom(map);
+      const outside = map.getZoom() < zoom;
+      // Step inside the new minimum first, so setMinZoom doesn't animate a zoom of its own.
+      if (outside) map.setView(map.getCenter(), Math.ceil(zoom), { animate: false });
+      map.setMinZoom(zoom);
+      if (outside) map.setZoom(zoom, { animate: false });
+    };
+    fit();
+    map.on('resize', fit);
+    return () => {
+      map.off('resize', fit);
+      map._limitZoom = limitZoom;
+    };
+  }, [map]);
+
+  useEffect(() => {
     if (ship?.port_latitude && ship?.port_longitude) {
       map.flyTo([ship.port_latitude, ship.port_longitude], Math.max(map.getZoom(), 5), { duration: 1 });
     }
@@ -135,7 +175,6 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter, co
     <MapContainer
       center={[20, 10]}
       zoom={2}
-      minZoom={2}
       maxBounds={WORLD_BOUNDS}
       maxBoundsViscosity={1}
       style={{ height: '100%', width: '100%' }}
@@ -144,7 +183,6 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter, co
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        noWrap
       />
       <MapController ship={highlighted} view={view} portFilter={portFilter} countryFilter={countryFilter} ships={mappable} />
       {mappable.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id).map(ship => {
