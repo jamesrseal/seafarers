@@ -46,7 +46,7 @@ test('waits out a rate limit for as long as it asks', async () => {
 
 test('a refused login fails at once and names the secrets', async () => {
   const { api, calls } = client([[url => url.endsWith('createSession'), () => response(401, { error: 'AuthenticationRequired', message: 'Invalid identifier or password' })]]);
-  await assert.rejects(api.createSession('abandonedseafarers.bsky.social', 'wrong'), /BLUESKY_APP_PASSWORD/);
+  await assert.rejects(api.createSession('abandonedseafarers.org', 'wrong'), /BLUESKY_APP_PASSWORD/);
   assert.equal(calls.length, 1);
 });
 

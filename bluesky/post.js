@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Daily Bluesky post: one ILO abandonment case to @abandonedseafarers.bsky.social.
+ * Daily Bluesky post: one ILO abandonment case to @abandonedseafarers.org.
  *
  * Usage:
  *   node post.js --dry-run [--case 1821] [--seed 7]   compose and verify, post nothing

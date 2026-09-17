@@ -79,7 +79,7 @@ The live site's `POST /api/scrapes/ingest` requires the `INGEST_TOKEN` set in Re
 
 ## Daily Bluesky post
 
-`.github/workflows/post-bluesky.yml` posts one abandonment case a day, at the time in `POST_TIME_UTC` (see [When the daily jobs run](#when-the-daily-jobs-run)), to [@abandonedseafarers.bsky.social](https://bsky.app/profile/abandonedseafarers.bsky.social). The code is in `bluesky/`: Node 22.13+, no dependencies.
+`.github/workflows/post-bluesky.yml` posts one abandonment case a day, at the time in `POST_TIME_UTC` (see [When the daily jobs run](#when-the-daily-jobs-run)), to [@abandonedseafarers.org](https://bsky.app/profile/abandonedseafarers.org). The code is in `bluesky/`: Node 22.13+, no dependencies.
 
 **Nothing in a post is written freehand.** Each post is a fixed template filled from the case's record in the committed database: ship name, flag, crew count, port, abandonment date and the site's status label. Most posts also carry whole sentences quoted word for word from the case's circumstances and its latest dated update. For example:
 
@@ -114,7 +114,7 @@ Before posting, it waits until the site is serving that case, so the link works.
 
 **Setup, once.**
 1. Create an app password in Bluesky under **Settings → Privacy and security → App passwords**.
-2. Add the repository secrets `BLUESKY_HANDLE` (`abandonedseafarers.bsky.social`) and `BLUESKY_APP_PASSWORD`.
+2. Add the repository secrets `BLUESKY_HANDLE` (`abandonedseafarers.org`) and `BLUESKY_APP_PASSWORD`.
 
 **Running it by hand.** Use **Actions → Post to Bluesky → Run workflow**:
 - `dry_run` is ticked by default. It composes and verifies the post and shows it in the run summary, without publishing.

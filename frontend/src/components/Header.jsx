@@ -76,11 +76,11 @@ export default function Header() {
             </a>
             {' '}&mdash;{' '}
             <a
-              href="https://bsky.app/profile/abandonedseafarers.bsky.social"
+              href="https://bsky.app/profile/abandonedseafarers.org"
               target="_blank"
               rel="noreferrer"
               aria-label="Abandoned Seafarers on Bluesky"
-              title="@abandonedseafarers.bsky.social"
+              title="@abandonedseafarers.org"
               className="text-blue-400 hover:text-blue-300 inline-flex align-middle"
             >
               {/* Bluesky's butterfly, from Simple Icons (CC0). */}

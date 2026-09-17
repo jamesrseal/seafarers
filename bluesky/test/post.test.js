@@ -8,7 +8,7 @@ const { nikolayMeshkov, bird16, shreenathJi } = require('../fixtures/ships');
 
 const NOW = new Date('2026-09-15T13:41:00Z');
 const DATA_AS_OF = '2026-09-15T10:09:20.322Z';
-const SECRETS = { BLUESKY_HANDLE: 'abandonedseafarers.bsky.social', BLUESKY_APP_PASSWORD: 'app-password' };
+const SECRETS = { BLUESKY_HANDLE: 'abandonedseafarers.org', BLUESKY_APP_PASSWORD: 'app-password' };
 const ships = [nikolayMeshkov, bird16, shreenathJi];
 
 // Everything the poster talks to. `posts` answers listRecords by call number.

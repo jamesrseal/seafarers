@@ -9,7 +9,7 @@ A dashboard for the ILO Abandoned Seafarers database. Four components:
 - **`backend/`** — Node.js/Express REST API + SQLite (via `better-sqlite3`)
 - **`frontend/`** — React 18 + Vite + Tailwind CSS + React Leaflet
 - **`scraper/`** — Python + Playwright scraper for the ILO AJAX website
-- **`bluesky/`** — daily post of one case to @abandonedseafarers.bsky.social (Node 22.13+, no dependencies)
+- **`bluesky/`** — daily post of one case to @abandonedseafarers.org (Node 22.13+, no dependencies)
 
 ## Commands
 
@@ -106,7 +106,7 @@ The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail pa
   The ILO publishes no resolution or status-change dates, so status changes only exist from the site's own history. Weeks with no refresh are shaded, not shown as zero.
 
 ### Bluesky poster
-`.github/workflows/post-bluesky.yml` runs `bluesky/post.js` once a day, when the scheduler starts it at `POST_TIME_UTC`, and on demand (off `master` always as a dry run). It picks one case, composes a post, verifies it and publishes it to @abandonedseafarers.bsky.social. The account's DID is pinned in `bluesky/src/config.js`. Setup: repo secrets `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD`, plus an optional variable `BLUESKY_SKIP_CASES`.
+`.github/workflows/post-bluesky.yml` runs `bluesky/post.js` once a day, when the scheduler starts it at `POST_TIME_UTC`, and on demand (off `master` always as a dry run). It picks one case, composes a post, verifies it and publishes it to @abandonedseafarers.org. The account's DID is pinned in `bluesky/src/config.js`. Setup: repo secrets `BLUESKY_HANDLE` and `BLUESKY_APP_PASSWORD`, plus an optional variable `BLUESKY_SKIP_CASES`.
 
 - `src/load.js`: latest row per case from the committed DB, read-only, via Node's built-in `node:sqlite`. Don't go through `backend/src/db/database.js`, which writes on open.
 - `src/feed.js`: already-posted case IDs, read back from the account's own records (`?ship=<id>` in the link card or a link facet).
