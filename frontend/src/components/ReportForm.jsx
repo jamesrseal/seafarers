@@ -123,7 +123,7 @@ export default function ReportForm() {
     ].filter(Boolean).join(' — ');
 
     const body = buildMailtoBody(form);
-    const mailto = `mailto:sector@ilo.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailto = `mailto:sector@ilo.org,abandoned@ilo.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailto;
     setSubmitted(true);
   }
@@ -162,7 +162,8 @@ export default function ReportForm() {
           <p className="text-sm text-gray-500 mt-1">
             ILO form for reporting cases of abandoned seafarers. Submitting will open your email
             client with this report pre-filled, addressed to{' '}
-            <span className="font-medium text-gray-700">sector@ilo.org</span>.
+            <span className="font-medium text-gray-700">sector@ilo.org</span> and{' '}
+            <span className="font-medium text-gray-700">abandoned@ilo.org</span>.
           </p>
           <div className="flex flex-wrap gap-4 mt-2 text-sm">
             <a
