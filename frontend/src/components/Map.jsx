@@ -8,6 +8,10 @@ const SIZE_EXAMPLES = [
   { label: '100+', r: markerRadius(100) },
 ];
 
+// One copy of the world. Tiles don't repeat past it and panning stops at its
+// edges, so the markers can't be dragged out of view.
+const WORLD_BOUNDS = [[-85, -180], [85, 180]];
+
 function MapLegend() {
   const [open, setOpen] = useState(false);
   const maxR = SIZE_EXAMPLES[SIZE_EXAMPLES.length - 1].r;
@@ -131,12 +135,16 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter, co
     <MapContainer
       center={[20, 10]}
       zoom={2}
+      minZoom={2}
+      maxBounds={WORLD_BOUNDS}
+      maxBoundsViscosity={1}
       style={{ height: '100%', width: '100%' }}
       scrollWheelZoom
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        noWrap
       />
       <MapController ship={highlighted} view={view} portFilter={portFilter} countryFilter={countryFilter} ships={mappable} />
       {mappable.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id).map(ship => {
