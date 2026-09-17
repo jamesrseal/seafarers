@@ -250,7 +250,7 @@ export default function ReportForm() {
             <div className="sm:col-span-2">
               <Field
                 label="Comments"
-                hint="When submitting comments or observations, complete at minimum: Name of ship, Flag, IMO Number, and Date of abandonment."
+                hint="When submitting comments or observations at least the columns headed name of ship, flag, IMO Number and date of abandonment should be completed, in order to enable the easy identification of the case. All comments and observation should be entered under the column headed Comments together with any associated explanations. The Member Government or organization submitting the comments or observation should be indicated in the six monthly and in the annual composite reports."
               >
                 <textarea className={textareaClass} value={form.comments} onChange={set('comments')} />
               </Field>
