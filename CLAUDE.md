@@ -18,6 +18,7 @@ A dashboard for the ILO Abandoned Seafarers database. Four components:
 cd backend
 npm start          # production
 npm run dev        # nodemon watch mode (requires nodemon in devDeps)
+npm test           # node:test: case pages, Dataset, sitemap
 ```
 Runs on port 3001.
 
@@ -78,6 +79,15 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 | GET | `/api/ships/status-changes` | Every status change the refreshes have recorded: `{ runs: [scraped_at…], changes: [{ scraped_at, previous_scraped_at, from, to }] }`, from consecutive history rows. Only goes back to the first scrape run; declared before `/:id` |
 | GET | `/api/scrapes` | Scrape runs, newest first: `scraped_at`, `record_count` (scraped), `inserted` (new/changed) |
 | POST | `/api/scrapes/ingest` | Bulk ingest from scraper: `{ scraped_at, ships: [...] }`. Requires `Authorization: Bearer $INGEST_TOKEN` when `INGEST_TOKEN` is set; refused in production when it isn't |
+
+### Pages for search engines
+The app only uses `/` and its query string. `backend/src/routes/site.js` serves it from `frontend/dist/index.html`, filled in by `backend/src/seo.js`:
+- **`/?ship=<id>`** gets the case's own title, description, canonical URL and Open Graph tags, plus the case as plain HTML in `#root`. That `.case-summary` is for crawlers and readers without JavaScript: `index.css` hides it when scripts run, and the app replaces it. An unknown case answers 404.
+- **Keep the `?ship=` form.** The Bluesky poster reads the cases it has posted back from it.
+- **`/`** adds a schema.org `Dataset` (JSON-LD) for Google Dataset Search.
+- **`/sitemap.xml`** lists every case, with its latest `scraped_at` as `lastmod`. `frontend/public/robots.txt` points to it. Don't disallow `/api/` there: Google needs it to render the app.
+- **Any other path is a 404.** `express.static` runs with `index: false` so `/` reaches the router.
+- **Tests:** `test/seo.test.js` reads the real `frontend/index.html`, so renaming or dropping a tag the pages fill in fails it.
 
 ### Scraper
 The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. IDs 1–1700 are iterated; missing/404 pages are silently skipped. Port geocoding uses `geopy.Nominatim` with the `cleaned_ports_list.csv` overrides (tilde-delimited). Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.

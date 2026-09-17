@@ -1,11 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
-
-// External status labels (used in the UI/URL) <-> raw stored values.
-const STATUS_VALUES = { Unresolved: '', Disputed: 'disputed', Inactive: 'inactive', Resolved: 'resolved' };
-const STATUS_LABELS = { '': 'Unresolved', disputed: 'Disputed', inactive: 'Inactive', resolved: 'Resolved' };
-const STATUS_ORDER  = ['', 'disputed', 'inactive', 'resolved'];
+const { STATUS_VALUES, STATUS_LABELS, STATUS_ORDER } = require('../status');
 
 // Restrict to the most recent row per ship.
 const LATEST = `scraped_at = (SELECT MAX(s2.scraped_at) FROM ships s2 WHERE s2.abandonment_id = ships.abandonment_id)`;
