@@ -1,0 +1,6 @@
+# Everything may be crawled. /api/ must stay open too: the app loads its data
+# from it, so Google needs it to render the pages.
+User-agent: *
+Allow: /
+
+Sitemap: https://abandonedseafarers.org/sitemap.xml

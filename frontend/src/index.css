@@ -8,6 +8,40 @@
   background: #aad3df;
 }
 
+/* A case link's page carries the case as plain HTML in #root (backend/src/seo.js)
+   for crawlers and readers without JavaScript. The app replaces it as it loads,
+   so hide it when scripts run rather than flash it first. */
+.js .case-summary {
+  display: none;
+}
+.case-summary {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  line-height: 1.6;
+}
+.case-summary h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.case-summary h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+}
+.case-summary p,
+.case-summary dl {
+  margin-top: 0.5rem;
+}
+.case-summary dt {
+  font-weight: 700;
+  margin-top: 0.5rem;
+}
+.case-summary a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 /* Hide the scrollbar on the horizontally-scrollable view-toggle row */
 .no-scrollbar {
   -ms-overflow-style: none;
