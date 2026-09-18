@@ -1,6 +1,32 @@
 import { useState } from 'react';
 import { downloadShipsCsv } from '../utils/exportCsv';
 
+// Reopens the welcome message, which explains the map and how to read it.
+function HelpButton({ onClick, className }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="How to use this site"
+      title="How to use this site"
+      className={className}
+    >
+      {/* An info circle, from SVG Repo (svgrepo.com/svg/511031/info). */}
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className="w-5 h-5"
+      >
+        <path d="M12 11V16M12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12C21 16.9706 16.9706 21 12 21ZM12.0498 8V8.1L11.9502 8.1002V8H12.0498Z" />
+      </svg>
+    </button>
+  );
+}
+
 function ExportButton({ ships, className }) {
   return (
     <button
@@ -40,7 +66,7 @@ function inputClass(active, full = false) {
   }`;
 }
 
-export default function FilterBar({ filters, setFilters, ships, facets, total, onClearAll }) {
+export default function FilterBar({ filters, setFilters, ships, facets, total, onClearAll, onShowWelcome }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const hasFilter = Object.values(filters).some(Boolean);
   const activeCount = Object.values(filters).filter(Boolean).length;
@@ -133,6 +159,10 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
               ships={ships}
               className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
             />
+            <HelpButton
+              onClick={onShowWelcome}
+              className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+            />
             {hasFilter && (
               <button
                 onClick={onClearAll}
@@ -168,6 +198,8 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
               Reset
             </button>
           )}
+          {/* Export CSV lives in the drawer on phones, so the help sits out here instead. */}
+          <HelpButton onClick={onShowWelcome} className="p-1 text-gray-500 hover:text-gray-700" />
         </div>
       </div>
 

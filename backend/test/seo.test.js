@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { caseTitle, caseDescription, casePage, homePage, sitemapXml } = require('../src/seo');
+const { caseTitle, caseDescription, casePage, viewPage, VIEW_PAGES, homePage, sitemapXml } = require('../src/seo');
 
 // The real template: the page functions fill in its tags, so this fails if one is renamed or dropped.
 const template = fs.readFileSync(path.join(__dirname, '../../frontend/index.html'), 'utf8');
@@ -81,6 +81,27 @@ test('titles and descriptions leave out what a record lacks', () => {
     '1 seafarer abandoned on the Yang Xho (flag Iran (Islamic Republic of)), September 2010. ILO case 7, status: Resolved.');
 });
 
+test('each view page has its own title, description and canonical URL', () => {
+  assert.deepEqual(Object.keys(VIEW_PAGES), ['about', 'report', 'dashboard']);
+  for (const [view, { title, description }] of Object.entries(VIEW_PAGES)) {
+    const html = viewPage(template, view);
+    const url = `https://abandonedseafarers.org/?view=${view}`;
+    assert.equal(html.match(/<title>([^<]*)<\/title>/)[1], title, view);
+    assert.equal(metaContent(html, 'property="og:title"'), title, view);
+    // Attributes carry the escaped text ("ILO's" -> "ILO&#39;s").
+    const escaped = description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    assert.equal(metaContent(html, 'name="description"'), escaped, view);
+    assert.equal(metaContent(html, 'name="twitter:description"'), escaped, view);
+    assert.equal(html.match(/<link rel="canonical" href="([^"]*)"/)[1], url, view);
+    assert.equal(metaContent(html, 'property="og:url"'), url, view);
+    assert.ok(title.endsWith('| Abandoned Seafarers'), `${view} title names the site`);
+    assert.ok(description.length <= 200, `${view} description stays snippet-sized`);
+    // The text is the React view, so nothing is written into #root, and the Dataset stays on the home page.
+    assert.match(html, /<div id="root"><\/div>/, view);
+    assert.ok(!html.includes('application/ld+json'), view);
+  }
+});
+
 test('the home page keeps its own tags and adds the Dataset', () => {
   const html = homePage(template, { cases: 1790, firstYear: 2004, modified: '2026-09-17T10:24:17.238Z' });
   assert.equal(html.replace(/<script type="application\/ld\+json">.*<\/script>\n  /, ''), template);
@@ -101,6 +122,9 @@ test('the sitemap lists the home page and each case with its last change', () =>
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     '  <url><loc>https://abandonedseafarers.org/</loc><lastmod>2026-09-17</lastmod></url>',
+    '  <url><loc>https://abandonedseafarers.org/?view=about</loc></url>',
+    '  <url><loc>https://abandonedseafarers.org/?view=report</loc></url>',
+    '  <url><loc>https://abandonedseafarers.org/?view=dashboard</loc></url>',
     '  <url><loc>https://abandonedseafarers.org/?ship=1</loc><lastmod>2024-03-01</lastmod></url>',
     '  <url><loc>https://abandonedseafarers.org/?ship=1815</loc><lastmod>2026-09-17</lastmod></url>',
     '</urlset>',

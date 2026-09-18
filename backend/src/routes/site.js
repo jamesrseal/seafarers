@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const db = require('../db/database');
-const { casePage, homePage, sitemapXml } = require('../seo');
+const { casePage, viewPage, VIEW_PAGES, homePage, sitemapXml } = require('../seo');
 
 const NOT_FOUND = `<!DOCTYPE html>
 <html lang="en">
@@ -46,7 +46,13 @@ module.exports = function siteRouter(frontendBuild) {
 
   router.get('/', (req, res) => {
     const id = [].concat(req.query.ship ?? [])[0];
-    if (!id) return res.send(homePage(indexHtml(), datasetFacts.get()));
+    // A case wins over the view: the app opens its detail on top of whatever view is named.
+    if (!id) {
+      const view = [].concat(req.query.view ?? [])[0];
+      return res.send(Object.hasOwn(VIEW_PAGES, view ?? '')
+        ? viewPage(indexHtml(), view)
+        : homePage(indexHtml(), datasetFacts.get()));
+    }
     const ship = /^\d+$/.test(id) ? latestShip.get(id) : undefined;
     // An unknown case still opens the app, but isn't a page to index.
     if (!ship) return res.status(404).send(indexHtml());

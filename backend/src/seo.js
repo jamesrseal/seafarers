@@ -113,6 +113,32 @@ function casePage(template, ship) {
   });
 }
 
+// The app's views that are pages in their own right, rather than another way to
+// look at the map. Each keeps its text in its React component, which search
+// engines render; only the tags are filled in here. The remaining views (table,
+// split) show the same cases as the map, so they stay on the home page's tags.
+const VIEW_PAGES = {
+  about: {
+    title: `About the data and this site | ${SITE_NAME}`,
+    description: 'Where the abandonment cases come from, what the ILO counts as abandoning a crew, how to read the map, who may report a case, and who built this site.',
+  },
+  report: {
+    title: `Report a seafarer abandonment to the ILO | ${SITE_NAME}`,
+    description: "The ILO's report of abandonment form, ready to fill in and email to the ILO, with who may submit one and where abandoned seafarers can get help.",
+  },
+  dashboard: {
+    title: `Seafarer abandonment statistics | ${SITE_NAME}`,
+    description: 'Charts of every reported case: how many are resolved or still open, which flags, ports and countries they cluster in, new cases per month, and what changed lately.',
+  },
+};
+
+const viewUrl = view => `${SITE_ORIGIN}/?view=${view}`;
+
+function viewPage(template, view) {
+  const { title, description } = VIEW_PAGES[view];
+  return renderPage(template, { title, description, canonical: viewUrl(view) });
+}
+
 // For Google Dataset Search. `modified` is when a case last changed.
 function datasetJsonLd({ cases, firstYear, modified }) {
   return {
@@ -145,10 +171,12 @@ function sitemapXml({ modified, cases }) {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     entry(`${SITE_ORIGIN}/`, modified),
+    // No lastmod on these: they change with the app, not with the data.
+    ...Object.keys(VIEW_PAGES).map(view => entry(viewUrl(view))),
     ...cases.map(c => entry(caseUrl(c.abandonment_id), c.scraped_at)),
     '</urlset>',
     '',
   ].join('\n');
 }
 
-module.exports = { caseTitle, caseDescription, casePage, homePage, datasetJsonLd, sitemapXml };
+module.exports = { caseTitle, caseDescription, casePage, viewPage, VIEW_PAGES, homePage, datasetJsonLd, sitemapXml };

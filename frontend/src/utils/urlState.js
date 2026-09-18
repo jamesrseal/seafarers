@@ -4,7 +4,7 @@
 
 const FILTER_KEYS = ['status', 'flag', 'port', 'country', 'q'];
 const DEFAULT_VIEW = 'map';
-const VALID_VIEWS = ['map', 'split', 'table', 'dashboard', 'report'];
+const VALID_VIEWS = ['map', 'split', 'table', 'dashboard', 'report', 'about'];
 
 export const EMPTY_FILTERS = { status: '', flag: '', port: '', country: '', q: '' };
 
