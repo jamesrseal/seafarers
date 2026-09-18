@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS ships (
 
 CREATE INDEX IF NOT EXISTS idx_abandonment_id ON ships(abandonment_id);
 CREATE INDEX IF NOT EXISTS idx_scraped_at ON ships(scraped_at);
+-- Every read restricts to the latest row per ship with a correlated
+-- MAX(scraped_at) subquery. Without this, each one scans the ship's history:
+-- the facets endpoint runs nine of them and took ~7s on the live site.
+CREATE INDEX IF NOT EXISTS idx_case_scraped ON ships(abandonment_id, scraped_at);
 
 -- One row per ingest. Ingest only stores ships whose data changed since their
 -- latest row, so this table (not ships) is the record of when scrapes ran.

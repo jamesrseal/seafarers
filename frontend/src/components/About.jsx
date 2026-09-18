@@ -146,7 +146,9 @@ export default function About() {
             what changed, and the site redeploys with the new data. One case a day is also posted to{' '}
             <Link href="https://bsky.app/profile/abandonedseafarers.org">Bluesky</Link>. The whole
             thing is open on{' '}
-            <Link href="https://github.com/jamesrseal/seafarers">GitHub</Link>.
+            <Link href="https://github.com/jamesrseal/seafarers">GitHub</Link>. New cases and
+            status changes are published as an{' '}
+            <Link href="/feed.xml">Atom feed</Link>, if you'd rather follow along from a reader.
           </p>
         </Section>
       </div>

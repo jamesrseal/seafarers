@@ -4,6 +4,7 @@
 // schema.org Dataset; and the sitemap lists every case.
 
 const { STATUS_LABELS } = require('./status');
+const { caseCardAlt } = require('./ogCard');
 
 const SITE_ORIGIN = 'https://abandonedseafarers.org';
 const SITE_NAME = 'Abandoned Seafarers';
@@ -78,7 +79,7 @@ function caseArticle(ship) {
 // Fills in the frontend's built index.html. Each value replaces the tag's
 // existing one; test/seo.test.js checks index.html still has every tag.
 // Replacements are functions so a "$" in case text isn't read as a pattern.
-function renderPage(template, { title, description, canonical, root, jsonLd }) {
+function renderPage(template, { title, description, canonical, image, root, jsonLd }) {
   let html = template;
   const set = (pattern, tag) => { html = html.replace(pattern, () => tag); };
   if (title) {
@@ -96,6 +97,14 @@ function renderPage(template, { title, description, canonical, root, jsonLd }) {
     set(/<link rel="canonical" href="[^"]*"/, `<link rel="canonical" href="${escapeHtml(canonical)}"`);
     set(/<meta property="og:url" content="[^"]*"/, `<meta property="og:url" content="${escapeHtml(canonical)}"`);
   }
+  if (image) {
+    for (const key of ['property="og:image"', 'name="twitter:image"']) {
+      set(new RegExp(`<meta ${key} content="[^"]*"`), `<meta ${key} content="${escapeHtml(image.url)}"`);
+    }
+    for (const key of ['property="og:image:alt"', 'name="twitter:image:alt"']) {
+      set(new RegExp(`<meta ${key} content="[^"]*"`), `<meta ${key} content="${escapeHtml(image.alt)}"`);
+    }
+  }
   if (root) set('<div id="root"></div>', `<div id="root">${root}</div>`);
   if (jsonLd) {
     const json = JSON.stringify(jsonLd).replace(/</g, '\\u003c');
@@ -104,11 +113,15 @@ function renderPage(template, { title, description, canonical, root, jsonLd }) {
   return html;
 }
 
+// A share of a case shows the case's own card (ogCard.js), not the site's map.
+const caseCardUrl = id => `${SITE_ORIGIN}/og/case-${id}.png`;
+
 function casePage(template, ship) {
   return renderPage(template, {
     title: caseTitle(ship),
     description: caseDescription(ship),
     canonical: caseUrl(ship.abandonment_id),
+    image: { url: caseCardUrl(ship.abandonment_id), alt: caseCardAlt(ship) },
     root: caseArticle(ship),
   });
 }

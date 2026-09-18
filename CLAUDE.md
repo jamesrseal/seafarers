@@ -52,7 +52,7 @@ SQLite at `backend/data/seafarers.db`. The committed file is the live data: Rend
 - `ships` — ingest compares each scraped ship with its latest row and inserts it (stamped with the run's `scraped_at`) only when a field differs, so history holds one row per actual change.
 - `scrape_runs` — one row per ingest (`scraped_at`, `received`, `inserted`). This, not `ships`, records when scrapes ran. The header's "Updated" time is the later of its newest `scraped_at` and the last app-code commit (`__APP_UPDATED__`, set in `frontend/vite.config.js`).
 
-The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`.
+The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`. `idx_case_scraped (abandonment_id, scraped_at)` is what keeps that cheap: without it each subquery scans the ship's history, and `/api/ships/facets`, which runs nine of them, took ~7s on the live site and ~150ms with it.
 
 ### Scheduler
 `.github/workflows/scheduler.yml` runs every half hour and calls `.github/scripts/dispatch-due.sh` once per daily workflow. It starts that workflow once the time in its repository variable has passed, unless a run has been created since:
@@ -78,12 +78,16 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 | GET | `/api/ships/:id/history` | All historical rows for a ship |
 | GET | `/api/ships/status-changes` | Every status change the refreshes have recorded: `{ runs: [scraped_at…], changes: [{ scraped_at, previous_scraped_at, from, to }] }`, from consecutive history rows. Only goes back to the first scrape run; declared before `/:id` |
 | GET | `/api/scrapes` | Scrape runs, newest first: `scraped_at`, `record_count` (scraped), `inserted` (new/changed) |
+| GET | `/feed.xml` | Atom feed of the 50 newest events: cases the refresh has just seen, and status changes. Built from the stored history (`backend/src/feed.js`), so entries are dated by the refresh that found them; the first run is the site arriving, not news, so its cases aren't announced |
+| GET | `/og/case-<id>.png` | The case's share card, 1200x630 (`backend/src/ogCard.js`): drawn as SVG, rasterised with `@resvg/resvg-js`, cached in memory per row. Needs the Lato TTFs in `backend/assets/fonts` — resvg reads TTF/OTF, not woff2 |
 | POST | `/api/scrapes/ingest` | Bulk ingest from scraper: `{ scraped_at, ships: [...] }`. Requires `Authorization: Bearer $INGEST_TOKEN` when `INGEST_TOKEN` is set; refused in production when it isn't |
 
 ### Pages for search engines
 The app only uses `/` and its query string. `backend/src/routes/site.js` serves it from `frontend/dist/index.html`, filled in by `backend/src/seo.js`:
 - **`/?ship=<id>`** gets the case's own title, description, canonical URL and Open Graph tags, plus the case as plain HTML in `#root`. That `.case-summary` is for crawlers and readers without JavaScript: `index.css` hides it when scripts run, and the app replaces it. An unknown case answers 404.
 - **Keep the `?ship=` form.** The Bluesky poster reads the cases it has posted back from it.
+- **A shared case shows its own card**, not the site's map image: `casePage` points `og:image`/`twitter:image` at `/og/case-<id>.png`, with alt text. The Bluesky poster still attaches the static `og-image.png` as its thumbnail.
+- **Status colours live in `backend/src/status.js`**, copied from `frontend/src/utils/statusColors.js` because the backend is CommonJS and the site is ESM — the bind `bluesky/src/status.js` is in. `test/status.test.js` reads the site's file and fails on drift.
 - **`/`** adds a schema.org `Dataset` (JSON-LD) for Google Dataset Search.
 - **`/?view=about`, `?view=report` and `?view=dashboard`** are pages in their own right (`VIEW_PAGES` in `seo.js`), each with its own title, description and canonical URL. Their text stays in their React components for search engines to render, so nothing is written into `#root`. The other views show the same cases as the map, so they keep the home page's tags. A case (`?ship=`) wins over the view, since the app opens its detail on top.
 - **`/sitemap.xml`** lists every case, with its latest `scraped_at` as `lastmod`. `frontend/public/robots.txt` points to it. Don't disallow `/api/` there: Google needs it to render the app.

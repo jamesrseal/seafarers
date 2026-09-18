@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../db/database');
 const { casePage, viewPage, VIEW_PAGES, homePage, sitemapXml } = require('../seo');
+const { caseEvents, feedXml, FEED_PATH } = require('../feed');
+const { caseCardPng } = require('../ogCard');
 
 const NOT_FOUND = `<!DOCTYPE html>
 <html lang="en">
@@ -39,9 +41,42 @@ module.exports = function siteRouter(frontendBuild) {
      FROM ships`
   );
 
+  // Enough of each row to write a feed entry, in the order caseEvents() walks.
+  const historyRows = db.prepare(
+    `SELECT abandonment_id, scraped_at, ship_status, ship_name, flag, imo_number,
+            port_of_abandonment, abandonment_date, num_seafarers
+     FROM ships ORDER BY abandonment_id, scraped_at`
+  );
+  const firstRun = db.prepare(`SELECT MIN(scraped_at) AS at FROM scrape_runs`);
+
   router.get('/sitemap.xml', (req, res) => {
     const { modified } = datasetFacts.get();
     res.type('application/xml').send(sitemapXml({ modified, cases: caseDates.all() }));
+  });
+
+  router.get(FEED_PATH, (req, res) => {
+    const events = caseEvents(historyRows.all(), firstRun.get().at);
+    res.type('application/atom+xml').send(feedXml(events));
+  });
+
+  // Rendered on demand and kept in memory: a crawler asks for a case's card
+  // once, and the data only changes when a refresh redeploys the site anyway.
+  // Keyed by the row it was drawn from, so a changed case redraws.
+  const cards = new Map();
+  const CARD_CACHE = 200;
+  const cardFor = ship => {
+    const key = `${ship.abandonment_id}:${ship.scraped_at}`;
+    if (!cards.has(key)) {
+      if (cards.size >= CARD_CACHE) cards.delete(cards.keys().next().value);
+      cards.set(key, caseCardPng(ship));
+    }
+    return cards.get(key);
+  };
+
+  router.get('/og/case-:id.png', (req, res) => {
+    const ship = /^\d+$/.test(req.params.id) ? latestShip.get(req.params.id) : undefined;
+    if (!ship) return res.status(404).type('html').send(NOT_FOUND);
+    res.type('png').set('Cache-Control', 'public, max-age=86400').send(cardFor(ship));
   });
 
   router.get('/', (req, res) => {
