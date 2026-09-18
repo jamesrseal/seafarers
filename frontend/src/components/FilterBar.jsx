@@ -60,8 +60,11 @@ function selectClass(active, full = false) {
   }`;
 }
 
-function inputClass(active, full = false) {
-  return `${full ? 'w-full' : 'w-56'} border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+// The search box fills its wrapper, which is what varies: fixed in the drawer,
+// flexible in the desktop bar so the row's buttons never wrap to a line of
+// their own when Reset appears.
+function inputClass(active) {
+  return `w-full border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${
     active ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-gray-300 bg-white text-gray-700'
   }`;
 }
@@ -93,14 +96,14 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
   function filterInputs(full = false) {
     return (
       <>
-        <div className="flex flex-col gap-1">
+        <div className={`flex flex-col gap-1 ${full ? '' : 'flex-1 min-w-[11rem] max-w-56'}`}>
           <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Search</label>
           <input
             type="text"
             placeholder="Ship name or circumstances…"
             value={filters.q}
             onChange={set('q')}
-            className={inputClass(!!filters.q, full)}
+            className={inputClass(!!filters.q)}
           />
         </div>
 
@@ -153,7 +156,7 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
       <div className="hidden sm:block bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap items-end gap-3">
           {filterInputs(false)}
-          <div className="flex items-end gap-3 ml-auto">
+          <div className="flex items-end gap-3 ml-auto shrink-0">
             <span className="text-sm text-gray-500 pb-1.5">{total} records</span>
             <ExportButton
               ships={ships}
