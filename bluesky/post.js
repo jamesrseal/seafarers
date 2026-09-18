@@ -33,7 +33,7 @@ const { assertGrounded } = require('./src/verify');
 const { pickCase, parseSkipList, secureRandom, seededRandom } = require('./src/select');
 const { caseIdsInPost, summarizePosts, postWebUrl } = require('./src/feed');
 const { createClient } = require('./src/bluesky');
-const { waitForLiveCase } = require('./src/site');
+const { waitForLiveCase, fetchCaseCard } = require('./src/site');
 const { statusLabel } = require('./src/status');
 
 function parseArgs(argv) {
@@ -239,7 +239,9 @@ async function main(argv, env = process.env, deps = {}) {
   if (session.did !== ACCOUNT_DID) {
     throw new Error(`logged in as ${session.did}, not ${ACCOUNT_DID}; refusing to post to the wrong account`);
   }
-  record.embed.external.thumb = await client.uploadBlob(session, readFile(THUMB_PATH), 'image/png');
+  // The case's own card if the site can draw it, the site-wide image if not.
+  const card = await fetchCaseCard({ id: draft.caseId, fetch, log });
+  record.embed.external.thumb = await client.uploadBlob(session, card ?? readFile(THUMB_PATH), 'image/png');
   const created = await publishOnce(client, session, pds, record, draft.caseId, { sleep, log });
 
   const url = postWebUrl(created.uri);

@@ -37,4 +37,26 @@ async function waitForLiveCase({
   }
 }
 
-module.exports = { waitForLiveCase, liveProblem };
+// Bluesky rejects a blob over 1 MB; the cards run ~40 KB.
+const CARD_MAX_BYTES = 1000000;
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47];
+
+// The case's own card, drawn by the site (backend/src/ogCard.js), for the link
+// card's thumbnail. Returns null rather than throwing when the site can't give
+// a usable one: a post is worth making with the site-wide image behind it.
+async function fetchCaseCard({ id, fetch, log = () => {} }) {
+  const url = `${SITE_ORIGIN}/og/case-${id}.png`;
+  const fallback = reason => { log(`  Using the site's own image: ${reason}.`); return null; };
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    if (res.status !== 200) return fallback(`${url} answered HTTP ${res.status}`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length > CARD_MAX_BYTES) return fallback(`the card is ${bytes.length} bytes, over Bluesky's ${CARD_MAX_BYTES}`);
+    if (!PNG_MAGIC.every((byte, i) => bytes[i] === byte)) return fallback('the card isn\'t a PNG');
+    return bytes;
+  } catch (err) {
+    return fallback(err.message);
+  }
+}
+
+module.exports = { waitForLiveCase, liveProblem, fetchCaseCard, CARD_MAX_BYTES };
