@@ -119,7 +119,7 @@ The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail pa
 - `src/parse.js`, `src/sentences.js`, `src/eligibility.js`: circumstances and dated updates, sentence splitting, and what may be quoted.
 - `src/compose.js`: template, best-fit layout under 300 graphemes, link facets (UTF-8 byte offsets), link card.
 - `src/verify.js`: the grounding check, run before every publish.
-- `src/bluesky.js`, `src/site.js`: the fetch client, and the wait until the site serves the case before linking to it.
+- `src/bluesky.js`, `src/site.js`: the fetch client, the wait until the site serves the case before linking to it, and `fetchCaseCard`, which takes the link card's thumbnail from the site's own `/og/case-<id>.png`. It returns null on any problem and the post falls back to `THUMB_PATH` (`frontend/public/og-image.png`) rather than failing over a picture.
 
 Rules for changing it:
 - **Never commit from the workflow.** A push to master redeploys Render. Posting state lives in the account's posts.

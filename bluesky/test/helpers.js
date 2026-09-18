@@ -2,13 +2,16 @@
 // where n counts calls to that route. Every call is recorded.
 
 function response(status, body, headers = {}) {
-  const text = body === undefined ? '' : typeof body === 'string' ? body : JSON.stringify(body);
+  // A Uint8Array body is binary (the case card); everything else is text.
+  const bytes = body instanceof Uint8Array ? body : null;
+  const text = bytes ? '' : body === undefined ? '' : typeof body === 'string' ? body : JSON.stringify(body);
   return {
     ok: status >= 200 && status < 300,
     status,
     headers: new Headers(headers),
     text: async () => text,
     json: async () => JSON.parse(text),
+    arrayBuffer: async () => (bytes || new TextEncoder().encode(text)).buffer,
   };
 }
 

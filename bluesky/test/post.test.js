@@ -12,11 +12,15 @@ const SECRETS = { BLUESKY_HANDLE: 'abandonedseafarers.org', BLUESKY_APP_PASSWORD
 const ships = [nikolayMeshkov, bird16, shreenathJi];
 
 // Everything the poster talks to. `posts` answers listRecords by call number.
-function world({ posts = () => [], session = { did: ACCOUNT_DID, accessJwt: 'jwt' }, createRecord, siteShip } = {}) {
+// A stand-in for the case's card: a PNG header and some bytes.
+const CARD_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+
+function world({ posts = () => [], session = { did: ACCOUNT_DID, accessJwt: 'jwt' }, createRecord, siteShip, caseCard } = {}) {
   return fakeFetch([
     [url => url.startsWith('https://plc.directory/'), () => response(200, { service: [{ id: '#atproto_pds', serviceEndpoint: 'https://pds.example' }] })],
     [url => url.includes('com.atproto.repo.listRecords'), (url, init, n) => response(200, { records: posts(n) })],
     [url => url.startsWith('https://abandonedseafarers.org/api/ships/'), siteShip || (() => response(200, {}))],
+    [url => url.startsWith('https://abandonedseafarers.org/og/case-'), caseCard || (() => response(200, CARD_PNG))],
     [url => url === 'https://abandonedseafarers.org/api/scrapes', () => response(200, [{ scraped_at: DATA_AS_OF }])],
     [url => url.endsWith('com.atproto.server.createSession'), () => response(200, session)],
     [url => url.endsWith('com.atproto.repo.uploadBlob'), () => response(200, { blob: { $type: 'blob', ref: { $link: 'bafk' }, mimeType: 'image/png', size: 3 } })],
@@ -71,6 +75,32 @@ test('publishes a case that has not been posted', async () => {
   assert.equal(body.record.embed.external.uri, siteCaseUrl('1821'), 'the only case not yet posted');
   assert.equal(body.record.embed.external.thumb.ref.$link, 'bafk');
   assert.equal(body.record.createdAt, NOW.toISOString());
+});
+
+const uploaded = fake => fake.calls.find(c => c.url.endsWith('uploadBlob'))?.init.body;
+
+test('the link card carries the case\'s own card', async () => {
+  const fake = world();
+  const result = await run([], { env: SECRETS, fake }).promise;
+  assert.deepEqual(uploaded(fake), CARD_PNG);
+  assert.ok(
+    fake.calls.some(c => c.url === `https://abandonedseafarers.org/og/case-${result.draft.caseId}.png`),
+    'asked for the card of the case it posted',
+  );
+});
+
+test('a card the site can\'t give falls back to the site image, and still posts', async () => {
+  for (const [reason, card] of [
+    ['missing', () => response(404, 'nope')],
+    ['not a PNG', () => response(200, new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]))],
+    ['too big', () => response(200, new Uint8Array(1000001).fill(0x89))],
+    ['unreachable', () => { throw new Error('connect ECONNREFUSED'); }],
+  ]) {
+    const fake = world({ caseCard: card });
+    const result = await run([], { env: SECRETS, fake }).promise;
+    assert.equal(result.status, 'posted', reason);
+    assert.deepEqual(uploaded(fake), Buffer.from('png'), `${reason}: used the site image`);
+  }
 });
 
 test('will not publish without the login secrets', async () => {
