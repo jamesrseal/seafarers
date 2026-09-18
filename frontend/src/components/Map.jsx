@@ -68,12 +68,15 @@ function MapLegend() {
             </div>
             <div>
               <div className="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1">Seafarers</div>
-              <div className="flex items-end gap-3">
+              {/* Each circle takes only its own width, and the row spreads them across the
+                  legend, so the space between them is the same however much the sizes differ.
+                  Equal-width cells would leave the small circle looking marooned. */}
+              <div className="flex items-end justify-between">
                 {SIZE_EXAMPLES.map(({ label, r }) => (
                   <div key={label} className="flex flex-col items-center gap-1">
-                    <svg width={maxR * 2 + 4} height={svgH}>
+                    <svg width={r * 2 + 2} height={svgH}>
                       <circle
-                        cx={(maxR * 2 + 4) / 2}
+                        cx={r + 1}
                         cy={svgH - r - 2}
                         r={r}
                         fill="#9ca3af"
