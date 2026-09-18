@@ -85,6 +85,7 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 - **`/?ship=<id>`** gets the case's own title, description, canonical URL and Open Graph tags, plus the case as plain HTML in `#root`. That `.case-summary` is for crawlers and readers without JavaScript: `index.css` hides it when scripts run, and the app replaces it. An unknown case answers 404.
 - **Keep the `?ship=` form.** The Bluesky poster reads the cases it has posted back from it.
 - **`/`** adds a schema.org `Dataset` (JSON-LD) for Google Dataset Search.
+- **`/?view=about`, `?view=report` and `?view=dashboard`** are pages in their own right (`VIEW_PAGES` in `seo.js`), each with its own title, description and canonical URL. Their text stays in their React components for search engines to render, so nothing is written into `#root`. The other views show the same cases as the map, so they keep the home page's tags. A case (`?ship=`) wins over the view, since the app opens its detail on top.
 - **`/sitemap.xml`** lists every case, with its latest `scraped_at` as `lastmod`. `frontend/public/robots.txt` points to it. Don't disallow `/api/` there: Google needs it to render the app.
 - **Any other path is a 404.** `express.static` runs with `index: false` so `/` reaches the router.
 - **Tests:** `test/seo.test.js` reads the real `frontend/index.html`, so renaming or dropping a tag the pages fill in fails it.

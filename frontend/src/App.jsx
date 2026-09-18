@@ -6,6 +6,8 @@ import ShipTable from './components/ShipTable';
 import ShipDetail from './components/ShipDetail';
 import Dashboard from './components/Dashboard';
 import ReportForm from './components/ReportForm';
+import About from './components/About';
+import WelcomeModal, { hasSeenWelcome } from './components/WelcomeModal';
 import { useShips, useFacets } from './hooks/useShips';
 import { readStateFromUrl, writeStateToUrl, EMPTY_FILTERS } from './utils/urlState';
 
@@ -15,6 +17,7 @@ const VIEWS = [
   ['table', 'Table', 'Table'],
   ['dashboard', 'Dashboard', 'Stats'],
   ['report', 'Report Seafarer Abandonment', 'Report'],
+  ['about', 'About', 'About'],
 ];
 
 export default function App() {
@@ -26,6 +29,8 @@ export default function App() {
   // Holds the deep-linked ship id until its detail has loaded, so the URL keeps
   // ?ship=N during the fetch instead of momentarily dropping it.
   const [pendingShip, setPendingShip] = useState(initial.ship);
+  // Not over a case someone followed a link to: that case is already open behind it.
+  const [showWelcome, setShowWelcome] = useState(() => !initial.ship && !hasSeenWelcome());
 
   const { ships, loading, error } = useShips(filters);
   const facets = useFacets(filters);
@@ -49,9 +54,9 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header />
-      {/* The report form and the dashboard don't use the filters (the dashboard
-          always counts every case), so the bar would only do nothing there. */}
-      {view !== 'report' && view !== 'dashboard' && <FilterBar
+      {/* The report form, the dashboard and the about page don't use the filters
+          (the dashboard always counts every case), so the bar would only do nothing there. */}
+      {view !== 'report' && view !== 'dashboard' && view !== 'about' && <FilterBar
         filters={filters}
         setFilters={(f) => { setFilters(f); setHighlightedShip(null); }}
         ships={ships}
@@ -62,6 +67,7 @@ export default function App() {
           setHighlightedShip(null);
           setSelectedShip(null);
         }}
+        onShowWelcome={() => setShowWelcome(true)}
       />}
 
       {/* View toggle — horizontally scrollable on small screens */}
@@ -83,6 +89,8 @@ export default function App() {
 
       {view === 'report' ? (
         <ReportForm />
+      ) : view === 'about' ? (
+        <About />
       ) : view === 'dashboard' ? (
         <Dashboard />
       ) : error ? (
@@ -128,6 +136,13 @@ export default function App() {
       )}
 
       <ShipDetail ship={selectedShip} onClose={() => setSelectedShip(null)} />
+
+      {showWelcome && (
+        <WelcomeModal
+          onClose={() => setShowWelcome(false)}
+          onAbout={() => { setShowWelcome(false); setView('about'); }}
+        />
+      )}
 
       <footer className="shrink-0 bg-gray-50 border-t border-gray-200 px-6 py-1.5 text-center text-xs text-gray-400">
         Disclaimer: This site is not affiliated with the ILO/IMO Joint Database on Abandonment of Seafarers and takes no responsibility for maintaining, updating, or reporting on abandoned seafarers.
