@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap, useMapEvent } from 'react-leaflet';
 import { statusColor, statusLabel, markerRadius, markerRecency, STATUS_COLORS, RECENCY_LEGEND } from '../utils/statusColors';
+import { spreadOffsets, groupByCoordinate, JITTER_FROM_ZOOM } from '../utils/jitter';
 
 const SIZE_EXAMPLES = [
   { label: '10', r: markerRadius(10) },
@@ -97,6 +98,61 @@ function MapLegend() {
   );
 }
 
+// The markers, with cases that share a port's coordinate spread around it once
+// the map is close enough (see ../utils/jitter.js). The spread is worked out in
+// pixels and turned back into coordinates at the current zoom, so it keeps its
+// shape and spacing however far in you go.
+function ShipMarkers({ ships, onSelect, highlighted }) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+  useMapEvent('zoomend', () => setZoom(map.getZoom()));
+
+  const placed = useMemo(() => {
+    const shown = ships.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id);
+    if (zoom < JITTER_FROM_ZOOM) {
+      return shown.map(ship => ({ ship, position: [ship.port_latitude, ship.port_longitude] }));
+    }
+    return [...groupByCoordinate(shown).values()].flatMap(group => {
+      const centre = [group[0].port_latitude, group[0].port_longitude];
+      if (group.length < 2) return [{ ship: group[0], position: centre }];
+      const point = map.project(centre, zoom);
+      return spreadOffsets(group.map(ship => markerRadius(ship.num_seafarers))).map(([dx, dy], i) => ({
+        ship: group[i],
+        position: map.unproject([point.x + dx, point.y + dy], zoom),
+      }));
+    });
+  }, [ships, highlighted, zoom, map]);
+
+  return placed.map(({ ship, position }) => {
+    const isHighlighted = !!highlighted;
+    const { fill } = statusColor(ship.ship_status);
+    const r = markerRadius(ship.num_seafarers);
+    const recency = markerRecency(ship.last_activity_date);
+    return (
+      <CircleMarker
+        key={ship.abandonment_id}
+        center={position}
+        radius={isHighlighted ? r + 5 : r}
+        pathOptions={{
+          fillColor: fill,
+          fillOpacity: isHighlighted ? 1 : recency.fillOpacity,
+          color: isHighlighted ? '#fff' : recency.strokeColor,
+          weight: isHighlighted ? 2.5 : recency.weight,
+        }}
+        eventHandlers={{ click: () => onSelect(ship) }}
+      >
+        <Tooltip>
+          <div className="text-xs leading-snug">
+            <div className="font-bold">{ship.ship_name}</div>
+            <div>{ship.port_of_abandonment}</div>
+            <div>{ship.num_seafarers} seafarers · {statusLabel(ship.ship_status)}</div>
+          </div>
+        </Tooltip>
+      </CircleMarker>
+    );
+  });
+}
+
 function MapController({ ship, view, portFilter, countryFilter, ships }) {
   const map = useMap();
   const pendingPortFly = useRef(null);
@@ -188,34 +244,7 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter, co
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapController ship={highlighted} view={view} portFilter={portFilter} countryFilter={countryFilter} ships={mappable} />
-      {mappable.filter(ship => !highlighted || highlighted.abandonment_id === ship.abandonment_id).map(ship => {
-        const isHighlighted = !!highlighted;
-        const { fill } = statusColor(ship.ship_status);
-        const r = markerRadius(ship.num_seafarers);
-        const recency = markerRecency(ship.last_activity_date);
-        return (
-          <CircleMarker
-            key={ship.abandonment_id}
-            center={[ship.port_latitude, ship.port_longitude]}
-            radius={isHighlighted ? r + 5 : r}
-            pathOptions={{
-              fillColor: fill,
-              fillOpacity: isHighlighted ? 1 : recency.fillOpacity,
-              color: isHighlighted ? '#fff' : recency.strokeColor,
-              weight: isHighlighted ? 2.5 : recency.weight,
-            }}
-            eventHandlers={{ click: () => onSelect(ship) }}
-          >
-            <Tooltip>
-              <div className="text-xs leading-snug">
-                <div className="font-bold">{ship.ship_name}</div>
-                <div>{ship.port_of_abandonment}</div>
-                <div>{ship.num_seafarers} seafarers · {statusLabel(ship.ship_status)}</div>
-              </div>
-            </Tooltip>
-          </CircleMarker>
-        );
-      })}
+      <ShipMarkers ships={mappable} onSelect={onSelect} highlighted={highlighted} />
     </MapContainer>
     </div>
   );
