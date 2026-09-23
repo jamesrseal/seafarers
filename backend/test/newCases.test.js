@@ -110,28 +110,47 @@ test('the badge expires once the arrivals are old', () => {
 });
 
 // The rule has to hold against the real history, not just hand-built rows.
-test('the newest cases in the committed database are the four that 18 September added', { skip: !fs.existsSync(DB_PATH) && 'no committed database' }, () => {
+// Deliberately not pinned to specific case ids: arrivals land every few days,
+// so a test naming them would fail on the cadence of the data rather than on a
+// mistake, and would soon be deleted for crying wolf. These are the things that
+// stay true however often the ILO adds a case.
+test("the committed database marks a cohort of real arrivals", { skip: !fs.existsSync(DB_PATH) && "no committed database" }, () => {
   const db = new Database(DB_PATH, { readonly: true });
-  // Anchored to the cohort's own date rather than the clock, so this keeps
-  // testing the rule as the committed data ages.
   const at = db.prepare(
     `SELECT MAX(first_seen) AS at FROM (
        SELECT MIN(scraped_at) AS first_seen FROM ships GROUP BY abandonment_id
      ) WHERE first_seen != (SELECT MIN(scraped_at) FROM scrape_runs)`
   ).get().at;
-  assert.ok(at, 'there is a cohort to find');
-  assert.equal(newCohortAt(db, Date.parse(at)), at, 'marked on the day it arrived');
-  assert.equal(newCohortAt(db, Date.parse(at) + (NEW_WINDOW_DAYS + 1) * DAY), null, 'and not a fortnight later');
+  assert.ok(at, "there is a cohort to find");
+
+  // Anchored to the cohort's own date rather than the clock, so this keeps
+  // testing the rule as the committed data ages.
+  assert.equal(newCohortAt(db, Date.parse(at)), at, "marked on the day it arrived");
+  assert.equal(newCohortAt(db, Date.parse(at) + (NEW_WINDOW_DAYS + 1) * DAY), null, "and not a fortnight later");
 
   const runs = db.prepare(`SELECT scraped_at FROM scrape_runs`).all().map(r => r.scraped_at);
-  assert.ok(runs.includes(at), 'the cohort is a real refresh, not a stray timestamp');
+  assert.ok(runs.includes(at), "the cohort is a real refresh, not a stray timestamp");
 
-  // The refresh of 18 September wrote nine rows and scrape_runs.inserted said
-  // nine, but only four of them were arrivals. Case 595 is one of the other
-  // five — it was edited by that run and again on the 22nd — so it is the case
-  // that would be wrongly marked by any rule built on `inserted`.
   const marked = badged(db, at);
-  assert.deepEqual(marked, ['1823', '1824', '1825', '1826'], 'the four cases that refresh added');
-  assert.ok(!marked.includes('595'), 'case 595 was updated by that run, not added by it');
+  const cases = db.prepare(`SELECT COUNT(DISTINCT abandonment_id) AS n FROM ships`).get().n;
+  assert.ok(marked.length > 0, "some cases arrived in it");
+  assert.ok(marked.length < cases / 2, `${marked.length} of ${cases} is an arrival, not the whole database`);
+
+  // Every case it marks really does begin there — no case with earlier history
+  // can slip in, which is the whole distinction between added and updated.
+  const firstSeen = db.prepare(`SELECT MIN(scraped_at) AS at FROM ships WHERE abandonment_id = ?`);
+  for (const id of marked) {
+    assert.equal(firstSeen.get(id).at, at, `case ${id} first appears in the cohort`);
+  }
+
+  // The case the refreshes have rewritten most often is the one a rule built on
+  // scrape_runs.inserted would call new most often. It never is.
+  const busiest = db.prepare(
+    `SELECT abandonment_id AS id, COUNT(*) AS rows FROM ships
+     GROUP BY abandonment_id ORDER BY COUNT(*) DESC, CAST(abandonment_id AS INTEGER) LIMIT 1`
+  ).get();
+  assert.ok(busiest.rows > 1, "some case has been edited since it arrived");
+  assert.ok(!marked.includes(busiest.id),
+    `case ${busiest.id} has ${busiest.rows} rows: edited that many times, added once, and not recently`);
   db.close();
 });
