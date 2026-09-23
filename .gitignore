@@ -20,6 +20,11 @@ backend/data/*.db-wal
 # Bluesky poster output (uploaded as a workflow artifact, never committed)
 bluesky/draft.json
 
+# OpenStreetMap tiles the basemap baker has already fetched. Keeping them makes
+# redrawing the panels free, but they are OSM's to serve, not ours to ship: the
+# committed artefact is backend/assets/basemaps.
+backend/.tile-cache/
+
 # Playwright debug artifacts
 scraper/page_*.html
 scraper/scraped_*.json

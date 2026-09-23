@@ -18,7 +18,9 @@ A dashboard for the ILO Abandoned Seafarers database. Four components:
 cd backend
 npm start          # production
 npm run dev        # nodemon watch mode (requires nodemon in devDeps)
-npm test           # node:test: case pages, Dataset, sitemap
+npm test           # node:test: case pages, Dataset, sitemap, cards, basemaps
+
+node scripts/bake-basemaps.js   # redraw assets/basemaps; run after a refresh adds a port
 ```
 Runs on port 3001.
 
@@ -79,7 +81,7 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 | GET | `/api/ships/status-changes` | Every status change the refreshes have recorded: `{ runs: [scraped_at…], changes: [{ scraped_at, previous_scraped_at, from, to }] }`, from consecutive history rows. Only goes back to the first scrape run; declared before `/:id` |
 | GET | `/api/scrapes` | Scrape runs, newest first: `scraped_at`, `record_count` (scraped), `inserted` (new/changed) |
 | GET | `/feed.xml` | Atom feed of the 50 newest events: cases the refresh has just seen, and status changes. Built from the stored history (`backend/src/feed.js`), so entries are dated by the refresh that found them; the first run is the site arriving, not news, so its cases aren't announced |
-| GET | `/og/case-<id>.png` | The case's share card, 1200x630 (`backend/src/ogCard.js`): drawn as SVG, rasterised with `@resvg/resvg-js`, cached in memory per row. Needs the Lato TTFs in `backend/assets/fonts` — resvg reads TTF/OTF, not woff2 |
+| GET | `/og/case-<id>.png` | The case's share card, 1200x630 (`backend/src/ogCard.js`): the case beside the piece of map it happened on, drawn as SVG, rasterised with `@resvg/resvg-js`, cached in memory per row. Needs the Lato TTFs in `backend/assets/fonts` — resvg reads TTF/OTF, not woff2 |
 | POST | `/api/scrapes/ingest` | Bulk ingest from scraper: `{ scraped_at, ships: [...] }`. Requires `Authorization: Bearer $INGEST_TOKEN` when `INGEST_TOKEN` is set; refused in production when it isn't |
 
 ### Pages for search engines
@@ -93,6 +95,17 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 - **`/sitemap.xml`** lists every case, with its latest `scraped_at` as `lastmod`. `frontend/public/robots.txt` points to it. Don't disallow `/api/` there: Google needs it to render the app.
 - **Any other path is a 404.** `express.static` runs with `index: false` so `/` reaches the router.
 - **Tests:** `test/seo.test.js` reads the real `frontend/index.html`, so renaming or dropping a tag the pages fill in fails it.
+
+### Case card basemaps
+`/og/case-<id>.png` draws the case beside the map it happened on. The map is a **committed JPEG**, one per port, in `backend/assets/basemaps/<lat>_<lon>.jpg` — about 30MB for 680 panels covering all 707 port coordinates.
+
+- **Nothing is fetched when a card is drawn.** Render's free plan has no persistent disk and the card cache is in memory, so live tiles would mean ~9 calls to OpenStreetMap on every cold request — the automated use their tile policy asks clients not to make. Baked, a card takes ~0.1s and can't be slower than the site.
+- **`backend/src/basemap.js` is shared by the baker and the card**, so the picture and the dots drawn on it can't drift: same centre, size, zoom and projection. Change anything there and the committed panels are stale — re-bake.
+- **`node scripts/bake-basemaps.js`** draws the missing ones (`--force` redraws all). Each distinct tile is fetched once, two at a time, and kept in the untracked `backend/.tile-cache`, so redrawing at a different size or quality costs no requests. Delete that directory to pull fresh tiles.
+- **JPEG, not WebP.** resvg reads PNG and JPEG and silently draws *nothing* for a WebP — the map would empty without failing. `test/basemap.test.js` checks the pixels, not the markup.
+- **A port with no panel loses the map, not the card**: the text runs full width instead. That covers the 38 cases with no coordinates, and any port a refresh adds before the next bake — which `test/basemap.test.js` fails on, so it can't go unnoticed.
+- **The markers are the site's**, via `markerRadius` and the status fills copied into `backend/src/status.js`; `test/status.test.js` runs the site's own function against the copy and fails on drift.
+- **The basemap is credited on every card that carries one** ("© OpenStreetMap contributors"), and in `backend/assets/CREDITS.md`.
 
 ### Scraper
 The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. IDs 1–1700 are iterated; missing/404 pages are silently skipped. Port geocoding uses `geopy.Nominatim` with the `cleaned_ports_list.csv` overrides (tilde-delimited). Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
@@ -143,7 +156,13 @@ npm test                               # node:test, no dependencies
 ```
 
 ## Ship Status Color Coding
-- `Inactive` → blue (`#bbc2e2`)
-- `resolved` → green (`#7dce82`)
-- `""` (active) → red (`#de1a1a`)
-- anything else → yellow (`#e8e288`)
+`frontend/src/utils/statusColors.js` is the source of truth. `backend/src/status.js` and `bluesky/src/status.js` copy it because they're CommonJS and it's ESM; both are tested against it and fail on drift.
+
+| Stored value | Label | Fill |
+|--------------|-------|------|
+| `""` | Unresolved | yellow `#e8e288` |
+| `disputed` | Disputed | red `#de1a1a` |
+| `inactive` | Inactive | grey `#9ca3af` |
+| `resolved` | Resolved | green `#7dce82` |
+
+An unrecognised status falls back to `""`, so it reads as Unresolved. The map also varies a marker's opacity and stroke by how recently the case saw activity (`markerRecency`), which is a separate axis from the fill — the cards don't use it.

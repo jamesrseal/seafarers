@@ -29,6 +29,18 @@ module.exports = function siteRouter(frontendBuild) {
   const indexHtml = () => (template ??= fs.readFileSync(path.join(frontendBuild, 'index.html'), 'utf8'));
 
   const latestShip = db.prepare(`SELECT * FROM ships WHERE abandonment_id = ? ORDER BY scraped_at DESC LIMIT 1`);
+  // The other cases close enough to fall inside a card's map panel. Two degrees
+  // covers it at every latitude — the panel is about 1.4 degrees tall at the
+  // equator and narrower towards the poles — and anything beyond the edge is
+  // clipped when it's drawn. min() over the longitude gap counts a neighbour on
+  // the far side of the antimeridian as the neighbour it is.
+  const casesNear = db.prepare(
+    `SELECT abandonment_id, ship_status, num_seafarers, port_latitude, port_longitude FROM ships
+     WHERE scraped_at = (SELECT MAX(s2.scraped_at) FROM ships s2 WHERE s2.abandonment_id = ships.abandonment_id)
+       AND port_latitude IS NOT NULL AND port_longitude IS NOT NULL
+       AND ABS(port_latitude - ?) <= 2
+       AND MIN(ABS(port_longitude - ?), 360 - ABS(port_longitude - ?)) <= 2`
+  );
   const caseDates = db.prepare(
     `SELECT abandonment_id, MAX(scraped_at) AS scraped_at FROM ships
      GROUP BY abandonment_id ORDER BY CAST(abandonment_id AS INTEGER)`
@@ -68,7 +80,9 @@ module.exports = function siteRouter(frontendBuild) {
     const key = `${ship.abandonment_id}:${ship.scraped_at}`;
     if (!cards.has(key)) {
       if (cards.size >= CARD_CACHE) cards.delete(cards.keys().next().value);
-      cards.set(key, caseCardPng(ship));
+      const { port_latitude: lat, port_longitude: lon } = ship;
+      const nearby = lat == null || lon == null ? [] : casesNear.all(lat, lon, lon);
+      cards.set(key, caseCardPng(ship, nearby));
     }
     return cards.get(key);
   };
