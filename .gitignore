@@ -29,6 +29,11 @@ backend/.tile-cache/
 scraper/page_*.html
 scraper/scraped_*.json
 
+# Personal Claude Code settings: the local scope is one developer's own
+# permission rules and machine paths, not the team's. The shared settings file
+# is .claude/settings.json, which stays tracked.
+.claude/settings.local.json
+
 # Agent worktrees: isolated checkouts of this repo. Their commits live on
 # branches, so nothing here needs tracking — and committing one would add a
 # second copy of the whole repo.
