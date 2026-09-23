@@ -52,7 +52,10 @@ jobs:
             scraper/package-lock.json
 
       - name: Install backend
-        run: npm ci --prefix backend --omit=dev
+        # Dev dependencies included: scripts/bake-basemaps.js encodes its panels
+        # with jpeg-js, which is dev-only because nothing at runtime writes one.
+        # The runner is thrown away afterwards, and Render installs separately.
+        run: npm ci --prefix backend
 
       - name: Install scraper
         working-directory: scraper
@@ -98,17 +101,30 @@ jobs:
           node -e "const D = require('./backend/node_modules/better-sqlite3'); const db = new D(process.env.DB_PATH); db.pragma('wal_checkpoint(TRUNCATE)'); db.pragma('journal_mode = DELETE'); db.close();"
           ls -l backend/data
 
+      # A case in a port nobody has been abandoned in before has no basemap, and
+      # its card would lose its map until someone noticed. Draw the missing ones
+      # here so they land in the same commit as the data that needs them. Ports
+      # already drawn are skipped, so on most days this prints "0 to draw".
+      - name: Draw basemaps for any new ports
+        run: |
+          node backend/scripts/bake-basemaps.js --db "$DB_PATH" | tee bake.log
+          echo "PANELS=$(git status --porcelain backend/assets/basemaps | grep -c '^??' || true)" >> "$GITHUB_ENV"
+
       - name: Commit and push
         if: github.ref == 'refs/heads/master'
         run: |
-          if git diff --quiet -- "$DB_PATH"; then
-            echo "Database unchanged; nothing to commit."
+          if git diff --quiet -- "$DB_PATH" && [ "$PANELS" -eq 0 ]; then
+            echo "Database unchanged and no new basemaps; nothing to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$DB_PATH"
-          git commit -m "Refresh ILO data ($AFTER ships, $((AFTER - BEFORE)) new)"
+          git add "$DB_PATH" backend/assets/basemaps
+          MSG="Refresh ILO data ($AFTER ships, $((AFTER - BEFORE)) new)"
+          if [ "$PANELS" -gt 0 ]; then
+            MSG="$MSG + $PANELS basemap(s)"
+          fi
+          git commit -m "$MSG"
           # Replay on top of anything pushed to master while the scrape ran.
           git pull --rebase origin master
           git push origin HEAD:master
@@ -117,8 +133,9 @@ jobs:
       - name: Dry run (not on master)
         if: github.ref != 'refs/heads/master'
         run: |
-          echo "Would commit: Refresh ILO data ($AFTER ships, $((AFTER - BEFORE)) new)"
+          echo "Would commit: Refresh ILO data ($AFTER ships, $((AFTER - BEFORE)) new) + $PANELS basemap(s)"
           git diff --stat -- "$DB_PATH"
+          git status --porcelain backend/assets/basemaps
 
       - name: Upload refreshed database (dry run)
         if: github.ref != 'refs/heads/master'
@@ -135,6 +152,7 @@ jobs:
           name: refresh-failure
           path: |
             backend.log
+            bake.log
             scraper/scraped_*.json
           if-no-files-found: ignore
           retention-days: 14

@@ -20,7 +20,7 @@ npm start          # production
 npm run dev        # nodemon watch mode (requires nodemon in devDeps)
 npm test           # node:test: case pages, Dataset, sitemap, cards, basemaps
 
-node scripts/bake-basemaps.js   # redraw assets/basemaps; run after a refresh adds a port
+node scripts/bake-basemaps.js   # redraw assets/basemaps by hand; the daily refresh does this itself
 ```
 Runs on port 3001.
 
@@ -68,8 +68,11 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 - **Posts need `dry_run=false`.** A dispatched post is a dry run without it.
 - **Testing:** test the script locally with a stub `gh` on PATH and `NOW=<epoch seconds>`.
 
+### Tests in CI
+`.github/workflows/test.yml` runs both suites on every push to `master` and every pull request. Nothing ran them automatically before, so each guard was only as good as someone remembering: the status colours copied into `backend/src/status.js` and `bluesky/src/status.js`, the flag icons the table needs, the tags the SEO pages fill in, the committed social card's pixels, and whether every port has a basemap. It doesn't gate the daily refresh, which commits straight to `master` — it reports right after.
+
 ### Scheduled refresh
-`.github/workflows/refresh-data.yml` runs a full scrape once a day, started by the scheduler, and on demand via workflow_dispatch. It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, and commits `backend/data/seafarers.db` to `master` ("Refresh ILO data (N ships, M new)"); Render redeploys on the push. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
+`.github/workflows/refresh-data.yml` runs a full scrape once a day, started by the scheduler, and on demand via workflow_dispatch. It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, draws a basemap for any port the scrape has just introduced, and commits `backend/data/seafarers.db` plus those panels to `master` ("Refresh ILO data (N ships, M new)", with "+ P basemap(s)" when it drew any); Render redeploys on the push. It installs the backend's dev dependencies, because the baker needs `jpeg-js`. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
 
 ### API Endpoints
 | Method | Path | Description |
@@ -111,9 +114,9 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 
 - **Nothing is fetched when a card is drawn.** Render's free plan has no persistent disk and the card cache is in memory, so live tiles would mean ~9 calls to OpenStreetMap on every cold request — the automated use their tile policy asks clients not to make. Baked, a card takes ~0.1s and can't be slower than the site.
 - **`backend/src/basemap.js` is shared by the baker and the card**, so the picture and the dots drawn on it can't drift: same centre, size, zoom and projection. Change anything there and the committed panels are stale — re-bake.
-- **`node scripts/bake-basemaps.js`** draws the missing ones (`--force` redraws all). Each distinct tile is fetched once, two at a time, and kept in the untracked `backend/.tile-cache`, so redrawing at a different size or quality costs no requests. Delete that directory to pull fresh tiles.
+- **The daily refresh draws them.** `refresh-data.yml` runs the baker after it scrapes and commits any new panels with the data that needs them, so a new port never ships uncovered. `node scripts/bake-basemaps.js` does the same by hand (`--force` redraws all). Each distinct tile is fetched once, two at a time, and kept in the untracked `backend/.tile-cache`, so redrawing at a different size or quality costs no requests. Delete that directory to pull fresh tiles.
 - **JPEG, not WebP.** resvg reads PNG and JPEG and silently draws *nothing* for a WebP — the map would empty without failing. `test/basemap.test.js` checks the pixels, not the markup.
-- **A port with no panel loses the map, not the card**: the text runs full width instead. That covers the 38 cases with no coordinates, and any port a refresh adds before the next bake — which `test/basemap.test.js` fails on, so it can't go unnoticed.
+- **A port with no panel loses the map, not the card**: the text runs full width instead. That covers the cases with no coordinates, and is the safety net if the refresh's bake ever fails — `test/basemap.test.js` fails while any port is missing one, and CI runs it.
 - **The markers are the site's**, via `markerRadius` and the status fills copied into `backend/src/status.js`; `test/status.test.js` runs the site's own function against the copy and fails on drift.
 - **The basemap is credited on every card that carries one** ("© OpenStreetMap contributors"), and in `backend/assets/CREDITS.md`.
 

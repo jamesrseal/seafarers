@@ -29,5 +29,7 @@ request — the automated use their
 not to make.
 
 `scripts/bake-basemaps.js` draws them, one per port, fetching each distinct tile
-once at two requests at a time. Re-run it after a refresh adds a port;
+once at two requests at a time. The daily refresh runs it and commits any new
+panels with the data that needs them, so ports don't go uncovered; run it by
+hand after changing the panel size, the zoom or the JPEG quality.
 `test/basemap.test.js` fails while any port is missing one.

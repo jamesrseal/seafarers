@@ -1,0 +1,53 @@
+name: Tests
+
+# Nothing ran the test suites automatically, so every guard in them was only as
+# good as someone remembering: the status colours copied into the backend and
+# the Bluesky poster, the flag icons the table needs, the tags the SEO pages
+# fill in, the pixels of the committed social card, and whether every port has a
+# basemap. They run here on every push and pull request instead.
+#
+# This does not gate the daily refresh, which commits straight to master — it
+# reports right after, rather than whenever tests were next run by hand.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # Dev dependencies included: the suites are part of them.
+      - name: Install backend
+        run: npm ci --prefix backend
+
+      - name: Install frontend
+        run: npm ci --prefix frontend
+
+      # Reads the committed database, so it also answers whether the data and
+      # the artefacts built from it have drifted apart.
+      - name: Backend tests
+        run: npm test --prefix backend
+
+      - name: Frontend tests
+        run: npm test --prefix frontend
