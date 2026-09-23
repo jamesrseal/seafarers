@@ -3,6 +3,7 @@ import { statusColor, statusLabel } from '../utils/statusColors';
 import { shipShareUrl } from '../utils/urlState';
 import { formatIloDate } from '../utils/formatDate';
 import FlagIcon from './FlagIcon';
+import NewBadge from './NewBadge';
 
 const MONTHS = {
   january:0, february:1, march:2, april:3, may:4, june:5,
@@ -89,6 +90,7 @@ export default function ShipDetail({ ship, onClose }) {
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-help ${badge}`} title={definition}>
                 {statusLabel(ship.ship_status)}
               </span>
+              <NewBadge ship={ship} />
             </div>
             <button onClick={onClose} aria-label="Close" className="shrink-0 text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
           </div>

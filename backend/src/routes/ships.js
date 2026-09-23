@@ -2,9 +2,15 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const { STATUS_VALUES, STATUS_LABELS, STATUS_ORDER } = require('../status');
+const { newCohortAt, FIRST_SEEN } = require('../newCases');
 
 // Restrict to the most recent row per ship.
 const LATEST = `scraped_at = (SELECT MAX(s2.scraped_at) FROM ships s2 WHERE s2.abandonment_id = ships.abandonment_id)`;
+
+// Marks the cases the site calls new (see ../newCases.js). Deliberately absent
+// from /facets, which already runs the correlated LATEST subquery nine times —
+// a second subquery there would multiply across all nine.
+const IS_NEW = `${FIRST_SEEN} = ? AS is_new`;
 
 function countryOf(port) {
   if (!port) return null;
@@ -57,10 +63,12 @@ router.get('/', (req, res) => {
   // by it sorts alphabetically, not chronologically. Order by the most recent
   // activity (ISO dates, NULLs last) and break ties by newest case id — case
   // ids are assigned sequentially, so higher id ≈ more recently added.
+  // ships.*, not *: the derived column makes this a multi-source select list,
+  // and LATEST relies on the unqualified name resolving to the outer table.
   const ships = db.prepare(
-    `SELECT * FROM ships ${sql}
+    `SELECT ships.*, ${IS_NEW} FROM ships ${sql}
      ORDER BY last_activity_date DESC, CAST(abandonment_id AS INTEGER) DESC`
-  ).all(...params);
+  ).all(newCohortAt(db), ...params);
   res.json(ships);
 });
 
@@ -141,9 +149,11 @@ router.get('/facets', (req, res) => {
 
 // Single ship — latest
 router.get('/:abandonment_id', (req, res) => {
+  // Carries is_new too: a deep-linked case is fetched here, not from the list.
   const ship = db.prepare(
-    `SELECT * FROM ships WHERE abandonment_id = ? ORDER BY scraped_at DESC LIMIT 1`
-  ).get(req.params.abandonment_id);
+    `SELECT ships.*, ${IS_NEW} FROM ships
+     WHERE abandonment_id = ? ORDER BY scraped_at DESC LIMIT 1`
+  ).get(newCohortAt(db), req.params.abandonment_id);
   if (!ship) return res.status(404).json({ error: 'Not found' });
   res.json(ship);
 });

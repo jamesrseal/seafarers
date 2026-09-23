@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap, useMapEvent } from 'react-leaflet';
 import { statusColor, statusLabel, markerRadius, markerRecency, STATUS_COLORS, RECENCY_LEGEND } from '../utils/statusColors';
 import { spreadOffsets, groupByCoordinate, JITTER_FROM_ZOOM } from '../utils/jitter';
+import NewBadge from './NewBadge';
 
 const SIZE_EXAMPLES = [
   { label: '10', r: markerRadius(10) },
@@ -143,7 +144,10 @@ function ShipMarkers({ ships, onSelect, highlighted }) {
       >
         <Tooltip>
           <div className="text-xs leading-snug">
-            <div className="font-bold">{ship.ship_name}</div>
+            <div className="font-bold flex items-center gap-1.5">
+              {ship.ship_name}
+              <NewBadge ship={ship} />
+            </div>
             <div>{ship.port_of_abandonment}</div>
             <div>{ship.num_seafarers} seafarers · {statusLabel(ship.ship_status)}</div>
           </div>

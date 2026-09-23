@@ -74,8 +74,8 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 ### API Endpoints
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/ships` | Latest snapshot of all ships; supports `?status=`, `?flag=`, `?port=`, `?q=` |
-| GET | `/api/ships/filters` | Distinct values for dropdowns |
+| GET | `/api/ships` | Latest snapshot of all ships; supports `?status=`, `?flag=`, `?port=`, `?country=`, `?q=`. Each row carries `is_new` (see below) |
+| GET | `/api/ships/facets` | Counts per value for each filter, each one counted with the *other* filters applied |
 | GET | `/api/ships/:id` | Single ship (latest) |
 | GET | `/api/ships/:id/history` | All historical rows for a ship |
 | GET | `/api/ships/status-changes` | Every status change the refreshes have recorded: `{ runs: [scraped_at…], changes: [{ scraped_at, previous_scraped_at, from, to }] }`, from consecutive history rows. Only goes back to the first scrape run; declared before `/:id` |
@@ -96,6 +96,16 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 - **Any other path is a 404.** `express.static` runs with `index: false` so `/` reaches the router.
 - **Tests:** `test/seo.test.js` reads the real `frontend/index.html`, so renaming or dropping a tag the pages fill in fails it.
 
+### New cases
+`is_new` on `/api/ships` and `/api/ships/:id` marks the cases the site has just seen, drawn as a badge by `frontend/src/components/NewBadge.jsx` in the table, the ship detail header and the map tooltip. The rule is `backend/src/newCases.js`.
+
+- **New means arrived, not updated.** A case's rows are only written when a field changed, so its first row is its arrival and `MIN(scraped_at)` can't move. **Don't use `scrape_runs.inserted`** — it counts new and changed rows together: the refresh of 18 September wrote nine rows of which four were arrivals, and the one before it wrote nine of which none were.
+- **It marks a cohort, not the last refresh.** Refreshes that bring nothing new are the norm, so the badge stays on the most recent arrivals until newer ones land.
+- **It expires after 14 days** (`NEW_WINDOW_DAYS`). Arrivals are irregular — one gap ran 66 days — and "New" on a two-month-old case is a lie.
+- **The cohort is computed over the whole table, never the filtered result.** The newest arrival *within a filter* can be years old, and would wear the badge on a page of its own.
+- **The first run is excluded**, as `feed.js` excludes it: that run is the database arriving, not news. Keep the two rules in step.
+- **Not in `/facets`**, which already runs the correlated subquery nine times, and not in the CSV export — it describes the site's scrape history, not the case.
+
 ### Case card basemaps
 `/og/case-<id>.png` draws the case beside the map it happened on. The map is a **committed JPEG**, one per port, in `backend/assets/basemaps/<lat>_<lon>.jpg` — about 30MB for 680 panels covering all 707 port coordinates.
 
@@ -113,7 +123,7 @@ The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail pa
 ### Frontend
 - `App.jsx` owns all state (filters, selected ship, view mode)
 - `useShips` hook fetches `/api/ships` whenever filters change
-- `useFilters` hook fetches `/api/ships/filters` once on mount
+- `useFacets` hook fetches `/api/ships/facets` whenever filters change
 - Map markers are Leaflet `CircleMarker`s — radius scales with `num_seafarers`, color by `ship_status`
 - Three view modes: Map, Map + Table (split), Table only
 - Flags are `flag-icons` SVGs, looked up from the ILO flag name in `src/utils/flags.js` and drawn by `FlagIcon.jsx` in the table, the ship detail and the dashboard's flag charts. A new or renamed ILO flag needs an entry there; `npm test` lists any the committed DB is missing. The `ships.flag_url` column is unused.

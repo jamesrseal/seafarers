@@ -9,6 +9,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
 import { formatIloDate } from '../utils/formatDate';
 import FlagIcon from './FlagIcon';
+import NewBadge from './NewBadge';
 
 const MONTHS = {
   january:1, february:2, march:3, april:4, may:5, june:6,
@@ -30,7 +31,19 @@ function parseDateForSort(str) {
 }
 
 const COLUMNS = [
-  { accessorKey: 'ship_name',           header: 'Ship Name' },
+  {
+    accessorKey: 'ship_name',
+    header: 'Ship Name',
+    // The cell truncates, not the <td>: an appended badge inside a truncating
+    // cell would be the part that got clipped. Sorting is unaffected — it reads
+    // the accessor value, not what is rendered.
+    cell: ({ getValue, row }) => (
+      <span className="flex items-center gap-1.5 min-w-0">
+        <span className="truncate min-w-0">{getValue()}</span>
+        <NewBadge ship={row.original} />
+      </span>
+    ),
+  },
   {
     accessorKey: 'ship_status',
     header: 'Status',
