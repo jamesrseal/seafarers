@@ -94,6 +94,15 @@ export default function About() {
 
         <Section title="Reporting an abandonment">
           <p>
+            If you're a seafarer, and you think your ship may have been abandoned, you should contact{' '}
+            <Link href="mailto:abandonment@itf.org.uk">ITF Seafarer Support</Link>. Seafarers and fishers who need help should speak to their trade union, their consulate,
+            or their flag State. The{' '}
+            <Link href="https://www.itfseafarers.org/en/contact-us/help-form">
+              International Transport Workers' Federation
+            </Link>{' '}
+            helps crews directly.
+          </p>
+          <p>
             Cases can only be reported by flag States, port States, labour-sending States, and
             non-governmental organizations with consultative or observer status at the ILO or IMO.
             To help facilitate this process, the Report view fills in the {' '}
@@ -102,14 +111,6 @@ export default function About() {
             </Link>{' '} and addresses it to{' '}
             <span className="font-medium text-gray-700">sector@ilo.org</span> and{' '}
             <span className="font-medium text-gray-700">abandoned@ilo.org</span>.
-          </p>
-          <p>
-            Seafarers and fishers who need help should speak to their trade union, their consulate,
-            or their flag State. The{' '}
-            <Link href="https://www.itfseafarers.org/en/contact-us/help-form">
-              International Transport Workers' Federation
-            </Link>{' '}
-            helps crews directly.
           </p>
         </Section>
 

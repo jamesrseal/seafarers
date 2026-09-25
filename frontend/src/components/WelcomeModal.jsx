@@ -65,6 +65,19 @@ export default function WelcomeModal({ onClose, onAbout }) {
             <li>Pay the seafarer's wages for at least two months.</li>
           </ol>
 
+          <p className="text-sm text-gray-600 mt-5">
+            If you're a seafarer, and you think your ship may have been abandoned, you should contact{' '}
+            <a
+              href="mailto:abandonment@itf.org.uk"
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              ITF Seafarer Support
+            </a>
+            .
+          </p>
+
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-5">
             Finding your way around
           </h3>
