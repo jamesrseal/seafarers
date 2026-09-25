@@ -69,14 +69,83 @@ function inputClass(active) {
   }`;
 }
 
+// [filter key, label]. The key names the filter, its facet and its URL
+// parameter. The first row always shows; the second is behind "More filters".
+const PRIMARY = [
+  ['status', 'Status'],
+  ['flag', 'Flag'],
+  ['country', 'Country of abandonment'],
+  ['port', 'Port'],
+];
+const SECONDARY = [
+  ['nationality', 'Crew nationality'],
+  ['vessel', 'Vessel type'],
+  ['payment', 'Payment'],
+  ['repatriation', 'Repatriation'],
+];
+
+function FacetSelect({ label, facet, value, onChange, full }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</label>
+      <select value={value} onChange={onChange} className={selectClass(!!value, full)}>
+        <option value="">{withCount('All', facet.total)}</option>
+        {facetOptions(facet, value).map(o => (
+          <option key={o.value} value={o.value}>{withCount(o.value, o.count)}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// Shows and hides the second row. The badge counts the filters set in it, so
+// they stay visible while it's closed. On desktop it's a quiet line under the
+// first row, styled like the labels: the first row has no width to spare, and
+// a button in it would push Export and Reset onto a line of their own. In the
+// drawer it's a full-width button.
+function MoreToggle({ open, active, onClick, full }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={open}
+      className={full
+        ? 'w-full flex items-center justify-between px-3 py-2 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-50'
+        : 'flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-800'}
+    >
+      <span className="flex items-center gap-1.5">
+        More filters
+        {active > 0 && (
+          <span className="bg-blue-600 text-white text-xs font-semibold normal-case tracking-normal rounded-full px-1.5 py-0.5 leading-none">
+            {active}
+          </span>
+        )}
+      </span>
+      <svg
+        className={`${full ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`}
+        fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+      </svg>
+    </button>
+  );
+}
+
 export default function FilterBar({ filters, setFilters, ships, facets, total, onClearAll, onShowWelcome }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const hasFilter = Object.values(filters).some(Boolean);
   const activeCount = Object.values(filters).filter(Boolean).length;
+  // Before a refresh has captured the ILO fields their facets are empty, so the
+  // second row's filters, and the toggle, stay hidden.
+  const secondary = SECONDARY.filter(([key]) => facets[key].values.length || filters[key]);
+  const activeSecondary = SECONDARY.filter(([key]) => filters[key]).length;
+  // Open from the start when a link arrives with one of them set.
+  const [moreOpen, setMoreOpen] = useState(activeSecondary > 0);
 
-  // Filters combine (status AND flag AND port/country AND search). The dropdown
-  // options and counts come from /api/ships/facets, computed for each facet from
-  // the OTHER active filters, so each list shows only what's still available
+  // Filters combine: every dropdown AND the search, with port and country as
+  // one. The dropdown options and counts come from /api/ships/facets, computed
+  // for each facet from the OTHER active filters, so each list shows only what's
+  // still available
   // (and "All" shows the total with that facet removed).
 
   function set(key) {
@@ -92,6 +161,10 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
     };
   }
 
+  const select = (full) => ([key, label]) => (
+    <FacetSelect key={key} label={label} facet={facets[key]} value={filters[key]} onChange={set(key)} full={full} />
+  );
+
   // Shared filter inputs — rendered in both desktop bar and mobile drawer
   function filterInputs(full = false) {
     return (
@@ -100,81 +173,55 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
           <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Search</label>
           <input
             type="text"
-            placeholder="Ship name or circumstances…"
+            placeholder="Ship, insurer or circumstances…"
             value={filters.q}
             onChange={set('q')}
             className={inputClass(!!filters.q)}
           />
         </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Status</label>
-          <select value={filters.status} onChange={set('status')} className={selectClass(!!filters.status, full)}>
-            <option value="">{withCount('All', facets.status.total)}</option>
-            {facetOptions(facets.status, filters.status).map(({ value, count }) => (
-              <option key={value} value={value}>{withCount(value, count)}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Flag</label>
-          <select value={filters.flag} onChange={set('flag')} className={selectClass(!!filters.flag, full)}>
-            <option value="">{withCount('All', facets.flag.total)}</option>
-            {facetOptions(facets.flag, filters.flag).map(({ value, count }) => (
-              <option key={value} value={value}>{withCount(value, count)}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Country of abandonment</label>
-          <select value={filters.country} onChange={set('country')} className={selectClass(!!filters.country, full)}>
-            <option value="">{withCount('All', facets.country.total)}</option>
-            {facetOptions(facets.country, filters.country).map(({ value, count }) => (
-              <option key={value} value={value}>{withCount(value, count)}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Port</label>
-          <select value={filters.port} onChange={set('port')} className={selectClass(!!filters.port, full)}>
-            <option value="">{withCount('All', facets.port.total)}</option>
-            {facetOptions(facets.port, filters.port).map(({ value, count }) => (
-              <option key={value} value={value}>{withCount(value, count)}</option>
-            ))}
-          </select>
-        </div>
+        {PRIMARY.map(select(full))}
       </>
     );
   }
+
+  function moreToggle(full = false) {
+    if (!secondary.length) return null;
+    return <MoreToggle open={moreOpen} active={activeSecondary} onClick={() => setMoreOpen(o => !o)} full={full} />;
+  }
+
+  const moreInputs = (full = false) => (moreOpen ? secondary.map(select(full)) : null);
 
   return (
     <>
       {/* ── Desktop bar (sm and up) ── */}
       <div className="hidden sm:block bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap items-end gap-3">
-          {filterInputs(false)}
-          <div className="flex items-end gap-3 ml-auto shrink-0">
-            <span className="text-sm text-gray-500 pb-1.5">{total} {total === 1 ? 'case' : 'cases'}</span>
-            <ExportButton
-              ships={ships}
-              className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
-            />
-            <HelpButton
-              onClick={onShowWelcome}
-              className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-            />
-            {hasFilter && (
-              <button
-                onClick={onClearAll}
-                className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
-              >
-                Reset
-              </button>
-            )}
+        <div className="max-w-7xl mx-auto px-6 py-3 space-y-2">
+          <div className="flex flex-wrap items-end gap-3">
+            {filterInputs(false)}
+            <div className="flex items-end gap-3 ml-auto shrink-0">
+              <span className="text-sm text-gray-500 pb-1.5">{total} {total === 1 ? 'case' : 'cases'}</span>
+              <ExportButton
+                ships={ships}
+                className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
+              />
+              <HelpButton
+                onClick={onShowWelcome}
+                className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              />
+              {hasFilter && (
+                <button
+                  onClick={onClearAll}
+                  className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
+          {moreToggle(false)}
+          {moreOpen && secondary.length > 0 && (
+            <div className="flex flex-wrap items-end gap-3">{moreInputs(false)}</div>
+          )}
         </div>
       </div>
 
@@ -225,6 +272,8 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
             </div>
 
             {filterInputs(true)}
+            {moreToggle(true)}
+            {moreInputs(true)}
 
             <div className="flex gap-3 pt-2">
               <button

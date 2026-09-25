@@ -141,7 +141,7 @@ const VIEW_PAGES = {
   },
   dashboard: {
     title: `Seafarer abandonment statistics | ${SITE_NAME}`,
-    description: 'Charts of every reported case: how many are resolved or still open, which flags, ports and countries they cluster in, new cases per month, and what changed lately.',
+    description: 'Charts of every reported case: how many are resolved or still open, their flags, ports and countries, crew nationalities and vessel types, new cases per month, and what changed lately.',
   },
 };
 

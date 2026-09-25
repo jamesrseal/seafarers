@@ -8,8 +8,9 @@ const FLAG_SVGS = import.meta.glob('/node_modules/flag-icons/flags/4x3/*.svg', {
   import: 'default',
 });
 
-// A ship's flag, drawn beside the flag name. alt is empty because the name is
-// always shown with it. Renders nothing for a blank or unmapped name.
+// A country's flag, for a ship's flag State or a crew's nationality, drawn
+// beside its name. alt is empty because the name is always shown with it.
+// Renders nothing for a blank or unmapped name.
 export default function FlagIcon({ flag, height = 12, className = '' }) {
   const code = flagCode(flag);
   const src = code && FLAG_SVGS[`/node_modules/flag-icons/flags/4x3/${code}.svg`];

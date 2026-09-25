@@ -59,7 +59,7 @@ SQLite at `backend/data/seafarers.db`. The committed file is the live data: Rend
   A record without one of the added columns (an older saved `scraped_*.json`) keeps the stored value rather than blanking it.
 - `scrape_runs` — one row per ingest (`scraped_at`, `received`, `inserted`). This, not `ships`, records when scrapes ran. The header's "Updated" time is the later of its newest `scraped_at` and the last app-code commit (`__APP_UPDATED__`, set in `frontend/vite.config.js`).
 
-The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`. `idx_case_scraped (abandonment_id, scraped_at)` is what keeps that cheap: without it each subquery scans the ship's history, and `/api/ships/facets`, which runs nine of them, took ~7s on the live site and ~150ms with it.
+`GET /api/ships` and `/api/ships/facets` select only the most recent row per `abandonment_id` by joining on `MAX(scraped_at)` grouped by case (`LATEST` in `backend/src/shipFilters.js`, which holds the filters and facets). `idx_case_scraped (abandonment_id, scraped_at)` serves that grouping. It was a correlated subquery per row until the facets doubled to eight: a grouped count took ~34ms that way and ~5ms joined, and `/facets`, which runs 16 of them, went from ~190ms with four facets to ~80ms with eight. (Before the index, the correlated form took ~7s on the live site.)
 
 ### Scheduler
 `.github/workflows/scheduler.yml` runs every half hour and calls `.github/scripts/dispatch-due.sh` once per daily workflow. It starts that workflow once the time in its repository variable has passed, unless a run has been created since:
@@ -82,7 +82,7 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 ### API Endpoints
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/ships` | Latest snapshot of all ships; supports `?status=`, `?flag=`, `?port=`, `?country=`, `?q=`. Each row carries `is_new` (see below) |
+| GET | `/api/ships` | Latest snapshot of all ships; supports `?status=`, `?flag=`, `?port=`, `?country=`, `?nationality=` (any of the crew), `?vessel=` (every ILO spelling of the type), `?payment=`, `?repatriation=` (the `*_latest` status) and `?q=` (ship name, circumstances, port, vessel type, insurer). Each row carries `is_new` (see below) |
 | GET | `/api/ships/facets` | Counts per value for each filter, each one counted with the *other* filters applied |
 | GET | `/api/ships/:id` | Single ship (latest) |
 | GET | `/api/ships/:id/history` | All historical rows for a ship |
@@ -112,7 +112,7 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 - **It expires after 14 days** (`NEW_WINDOW_DAYS`). Arrivals are irregular — one gap ran 66 days — and "New" on a two-month-old case is a lie.
 - **The cohort is computed over the whole table, never the filtered result.** The newest arrival *within a filter* can be years old, and would wear the badge on a page of its own.
 - **The first run is excluded**, as `feed.js` excludes it: that run is the database arriving, not news. Keep the two rules in step.
-- **Not in `/facets`**, which already runs the correlated subquery nine times, and not in the CSV export — it describes the site's scrape history, not the case.
+- **Not in `/facets`**, which runs 16 counts and would pay for the extra subquery in each, and not in the CSV export — it describes the site's scrape history, not the case.
 
 ### Case card basemaps
 `/og/case-<id>.png` draws the case beside the map it happened on. The map is a **committed JPEG**, one per port, in `backend/assets/basemaps/<lat>_<lon>.jpg` — about 30MB for 680 panels covering all 707 port coordinates.
@@ -140,9 +140,15 @@ Six fields arrive as markup or packed text and are shaped by `scraper/iloFields.
 - `App.jsx` owns all state (filters, selected ship, view mode)
 - `useShips` hook fetches `/api/ships` whenever filters change
 - `useFacets` hook fetches `/api/ships/facets` whenever filters change
+- The filters are `FILTER_KEYS` in `src/utils/urlState.js`: each is a URL parameter, an `/api/ships` parameter and a facet of the same name, and both hooks build their query from that list.
+- `FilterBar.jsx` keeps one row of filters (search, status, flag, country, port). Crew nationality, vessel type, payment and repatriation sit behind **More filters**, a quiet line under it: the row is full, and a button in it pushes Export and Reset onto a line of their own. The second row opens by itself when a link sets one of its filters, and stays hidden, toggle and all, until a refresh has captured the ILO fields. The insurer has no dropdown — the ILO names one insurer several ways ("Hydor", "Hydor AS") — so the search covers it instead.
 - Map markers are Leaflet `CircleMarker`s — radius scales with `num_seafarers`, color by `ship_status`
 - Three view modes: Map, Map + Table (split), Table only
-- Flags are `flag-icons` SVGs, looked up from the ILO flag name in `src/utils/flags.js` and drawn by `FlagIcon.jsx` in the table, the ship detail and the dashboard's flag charts. A new or renamed ILO flag needs an entry there; `npm test` lists any the committed DB is missing. The `ships.flag_url` column is unused.
+- Flags are `flag-icons` SVGs, looked up from the ILO country name in `src/utils/flags.js` and drawn by `FlagIcon.jsx` in the table, the ship detail and the dashboard's flag and nationality charts. A new or renamed ILO flag or nationality needs an entry there; `npm test` lists any the committed DB is missing. Yugoslavia, which flag-icons has no flag for, is drawn without one. The `ships.flag_url` column is unused.
+- The table and the CSV export have a column for each ILO field: vessel type, nationalities, payment and repatriation (`*_latest`), latest action (the newest heading in `actions_taken`) and insurer. Each shows the ILO's text as stored; `src/utils/iloFields.js` reads the JSON ones. The dated histories aren't exported, like the other long text.
+- The Dashboard charts nationalities and vessel types from the ILO fields. Both the table and the dashboard leave the ILO fields out until a refresh has captured them (NULL on every case before that); the CSV keeps its columns and leaves them blank.
+  - **Seafarers by nationality sums the ILO's head counts.** Older cases sometimes name a nationality without one ("Georgia; Greece; Philippines"), so it counts fewer seafarers than `num_seafarers`; the chart's note says how many cases are missing.
+  - **Vessel types the ILO spells two ways are merged** for the dashboard and the vessel type filter by `VESSEL_TYPE_ALIASES` in `src/utils/vesselTypes.js`: 161 cases say "General Cargo" and 278 "General Cargo Ship", over the same years. The stored text isn't touched. `backend/src/vesselTypes.js` copies the map for the filter, and `test/vesselTypes.test.js` fails if the two drift.
 - The Dashboard's two "over time" charts live in `CasesOverTime.jsx`, drawn as plain SVG (no chart library), each with a table view:
   - **New cases per month** comes from the ILO `notification_date`.
   - **Status changes per week** comes from `/api/ships/status-changes`.

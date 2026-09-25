@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { STATUS_COLORS, statusLabel, RECENCY_LEGEND } from '../utils/statusColors';
+import { nationalities } from '../utils/iloFields';
+import { vesselType } from '../utils/vesselTypes';
 import CasesOverTime from './CasesOverTime';
 import FlagIcon from './FlagIcon';
 
@@ -146,11 +148,12 @@ function RecentlyUpdated({ ships }) {
   );
 }
 
-function Section({ title, children }) {
+function Section({ title, note, children }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-5">
       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">{title}</h2>
       {children}
+      {note && <p className="text-xs text-gray-400 mt-3">{note}</p>}
     </div>
   );
 }
@@ -180,6 +183,23 @@ export default function Dashboard() {
   const topCountries        = topN(ships, s => portCountry(s.port_of_abandonment), () => 1,                               limit);
   const topFlagsByShips     = topN(ships, s => s.flag,                             () => 1,                               limit);
   const topFlagsBySeafarers = topN(ships, s => s.flag,                             s => parseInt(s.num_seafarers) || 0,   limit);
+
+  // One entry per nationality per case. No case lists a country twice, so
+  // counting entries counts cases.
+  const crews = ships.map(nationalities);
+  const crewEntries = crews.flat();
+  const casesWithCrew = crews.filter(c => c.length).length;
+  const casesUncounted = crews.filter(c => c.some(n => n.count == null)).length;
+  const headCounts = crewEntries.filter(n => n.count != null);
+  const seafarersCounted = headCounts.reduce((sum, n) => sum + n.count, 0);
+  const topNationalitiesByShips     = topN(crewEntries, n => n.country, () => 1,      limit);
+  const topNationalitiesBySeafarers = topN(headCounts,  n => n.country, n => n.count, limit);
+
+  const typed = ships.filter(vesselType);
+  const topTypesByShips     = topN(typed, vesselType, () => 1,                             limit);
+  const topTypesBySeafarers = topN(typed, vesselType, s => parseInt(s.num_seafarers) || 0, limit);
+
+  const ofAll = n => `${n.toLocaleString()} of ${ships.length.toLocaleString()} cases`;
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50 p-6">
@@ -242,6 +262,29 @@ export default function Dashboard() {
           <Section title="Flags by seafarers abandoned">
             <BarChart data={topFlagsBySeafarers} color="#fb923c" icon={name => <FlagIcon flag={name} />} />
           </Section>
+
+          {/* Hidden until a refresh has captured the ILO field: before that it is NULL on every case. */}
+          {casesWithCrew > 0 && <>
+            <Section title="Nationalities by ships abandoned"
+              note={`Listed for ${ofAll(casesWithCrew)}. A crew of several nationalities counts once for each.`}>
+              <BarChart data={topNationalitiesByShips} color="#a78bfa" icon={name => <FlagIcon flag={name} />} />
+            </Section>
+            <Section title="Nationalities by seafarers abandoned"
+              note={`${seafarersCounted.toLocaleString()} seafarers, from the ILO's head counts.${casesUncounted
+                ? ` ${casesUncounted.toLocaleString()} cases name a nationality without one; those seafarers aren't included.` : ''}`}>
+              <BarChart data={topNationalitiesBySeafarers} color="#818cf8" icon={name => <FlagIcon flag={name} />} />
+            </Section>
+          </>}
+          {typed.length > 0 && <>
+            <Section title="Vessel types by ships abandoned"
+              note={`Recorded for ${ofAll(typed.length)}. Types the ILO spells two ways, such as “General Cargo” and “General Cargo Ship”, count as one.`}>
+              <BarChart data={topTypesByShips} color="#2dd4bf" />
+            </Section>
+            <Section title="Vessel types by seafarers abandoned"
+              note={`Seafarers on the ${typed.length.toLocaleString()} cases with a recorded type.`}>
+              <BarChart data={topTypesBySeafarers} color="#22d3ee" />
+            </Section>
+          </>}
         </div>
 
       </div>

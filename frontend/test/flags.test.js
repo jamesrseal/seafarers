@@ -18,6 +18,23 @@ test('every flag name in the committed database has a flag code', () => {
   assert.deepEqual(missing, [], 'add these names to FLAG_CODES in src/utils/flags.js');
 });
 
+// The dashboard draws a nationality with its country's flag. Names flag-icons
+// has no flag for are drawn without one.
+const NO_FLAG = ['Yugoslavia'];
+
+test('every nationality in the committed database has a flag code', t => {
+  const db = new DatabaseSync(DB_PATH, { readOnly: true });
+  const captured = db.prepare('PRAGMA table_info(ships)').all().some(c => c.name === 'nationalities');
+  const lists = captured
+    ? db.prepare(`SELECT DISTINCT nationalities FROM ships WHERE nationalities <> ''`).all()
+    : [];
+  db.close();
+  if (!captured) return t.skip('the committed database has no nationalities until a refresh adds them');
+  const names = new Set(lists.flatMap(r => JSON.parse(r.nationalities).map(n => n.country)));
+  const missing = [...names].filter(name => !flagCode(name) && !NO_FLAG.includes(name));
+  assert.deepEqual(missing, [], 'add these names to FLAG_CODES in src/utils/flags.js');
+});
+
 test('every flag code has a flag-icons SVG', () => {
   const missing = [...new Set(Object.values(FLAG_CODES))]
     .filter(code => !existsSync(new URL(`${code}.svg`, SVG_DIR)));

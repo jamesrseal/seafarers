@@ -1,19 +1,29 @@
-import { statusLabel } from './statusColors';
+// With extensions, so Node can load this for test/exportCsv.test.js.
+import { statusLabel } from './statusColors.js';
+import { nationalitiesText, latestAction } from './iloFields.js';
 
 // Columns exported, in order. [header, accessor]
+// The ILO fields are the table's columns: the latest payment, repatriation and
+// action, not their dated histories, which are long text like the comments.
 const CSV_COLUMNS = [
   ['Abandonment ID',      s => s.abandonment_id],
   ['Ship Name',           s => s.ship_name],
   ['Status',              s => statusLabel(s.ship_status)],
   ['Flag',                s => s.flag],
   ['IMO Number',          s => s.imo_number],
+  ['Vessel Type',         s => s.vessel_type],
   ['Port of Abandonment', s => s.port_of_abandonment],
   ['Latitude',            s => s.port_latitude],
   ['Longitude',           s => s.port_longitude],
   ['Seafarers',           s => s.num_seafarers],
+  ['Nationalities',       nationalitiesText],
   ['Abandonment Date',    s => s.abandonment_date],
   ['Notification Date',   s => s.notification_date],
   ['Last Activity',       s => s.last_activity_date],
+  ['Payment',             s => s.payment_latest],
+  ['Repatriation',        s => s.repatriation_latest],
+  ['Latest Action',       latestAction],
+  ['Insurer',             s => s.financial_security_provider],
   ['Reporting Org.',      s => s.reporting_member],
   ['Fishing Vessel',      s => (s.fishing_vessel ? 'Yes' : 'No')],
   ['ILO URL',             s => s.ilo_url],

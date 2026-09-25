@@ -2,11 +2,12 @@
 // Filters, the current view, and the open ship are reflected in the query
 // string so that any view is a shareable, bookmarkable link.
 
-const FILTER_KEYS = ['status', 'flag', 'port', 'country', 'q'];
+// Each is also the /api/ships query parameter of the same name.
+export const FILTER_KEYS = ['status', 'flag', 'port', 'country', 'q', 'nationality', 'vessel', 'payment', 'repatriation'];
 const DEFAULT_VIEW = 'map';
 const VALID_VIEWS = ['map', 'split', 'table', 'dashboard', 'report', 'about'];
 
-export const EMPTY_FILTERS = { status: '', flag: '', port: '', country: '', q: '' };
+export const EMPTY_FILTERS = Object.fromEntries(FILTER_KEYS.map(k => [k, '']));
 
 export function readStateFromUrl() {
   const p = new URLSearchParams(window.location.search);

@@ -8,6 +8,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { statusColor, statusLabel } from '../utils/statusColors';
 import { formatIloDate } from '../utils/formatDate';
+import { nationalitiesText, latestAction } from '../utils/iloFields';
 import FlagIcon from './FlagIcon';
 import NewBadge from './NewBadge';
 
@@ -29,6 +30,12 @@ function parseDateForSort(str) {
   const year  = parseInt(parts[2], 10);
   return year * 10000 + month * 100 + day;
 }
+
+const orDash = ({ getValue }) => getValue() || <span className="text-gray-400">—</span>;
+
+// A column for one of the ILO fields that are NULL on every case until a
+// refresh has captured them. The table leaves these out until then.
+const iloColumn = column => ({ cell: orDash, ...column, meta: { ilo: true } });
 
 const COLUMNS = [
   {
@@ -59,8 +66,10 @@ const COLUMNS = [
       ? <><FlagIcon flag={getValue()} className="mr-1.5" />{getValue()}</>
       : <span className="text-gray-400 italic">Unknown</span>,
   },
+  iloColumn({ accessorKey: 'vessel_type', header: 'Vessel Type' }),
   { accessorKey: 'port_of_abandonment', header: 'Port' },
   { accessorKey: 'num_seafarers',       header: 'Seafarers' },
+  iloColumn({ id: 'nationalities', accessorFn: nationalitiesText, header: 'Nationalities' }),
   {
     accessorKey: 'abandonment_date',
     header: 'Abandonment Date',
@@ -77,6 +86,10 @@ const COLUMNS = [
     },
     cell: ({ getValue }) => getValue() ?? <span className="text-gray-400">—</span>,
   },
+  iloColumn({ accessorKey: 'payment_latest',              header: 'Payment' }),
+  iloColumn({ accessorKey: 'repatriation_latest',         header: 'Repatriation' }),
+  iloColumn({ id: 'latest_action', accessorFn: latestAction, header: 'Latest Action' }),
+  iloColumn({ accessorKey: 'financial_security_provider', header: 'Insurer' }),
   {
     id: 'links',
     header: 'Links',
@@ -121,7 +134,9 @@ function SortIcon({ column }) {
 export default function ShipTable({ ships, onSelect, highlighted }) {
   const [sorting, setSorting] = useState([{ id: 'last_activity_date', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
-  const columns = useMemo(() => COLUMNS, []);
+  // Every field is captured together, so any one of them will do.
+  const captured = ships.some(s => s.nationalities != null);
+  const columns = useMemo(() => (captured ? COLUMNS : COLUMNS.filter(c => !c.meta?.ilo)), [captured]);
   useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [ships]);
 
   const table = useReactTable({
