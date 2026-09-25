@@ -86,7 +86,7 @@ export default function About() {
           </ul>
           <p>
             Click a dot to read the case: the ship, its flag and IMO number, how many seafarers were
-            aboard, what was reported, and any updates since, with a link to the ILO's own record.
+            aboard, what was reported, and any updates since, with a link to the case on the ILO's own site.
             The Table view lists the same cases, and the Dashboard charts them. New
             cases per month come from the date each case was notified to the ILO.
           </p>

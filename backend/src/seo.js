@@ -61,7 +61,7 @@ function caseArticle(ship) {
     ['Reporting Org.', ship.reporting_member],
   ].filter(([, value]) => value != null && value !== '');
   const links = [
-    /^https:\/\//.test(ship.ilo_url ?? '') && `<a href="${escapeHtml(ship.ilo_url)}">ILO record</a>`,
+    /^https:\/\//.test(ship.ilo_url ?? '') && `<a href="${escapeHtml(ship.ilo_url)}">ILO case</a>`,
     '<a href="/">Map of all abandonment cases</a>',
   ].filter(Boolean);
   return [

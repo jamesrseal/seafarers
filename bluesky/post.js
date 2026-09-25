@@ -92,7 +92,7 @@ function summaryMarkdown(draft, pick, { mode, postUrl }) {
   return [
     `## Bluesky post: ${mode}`,
     '',
-    `**Case ${draft.caseId}**, ${statusLabel(pick.ship.ship_status)}: [site](${draft.card.uri}) · [ILO record](${pick.ship.ilo_url}) · ${how}`,
+    `**Case ${draft.caseId}**, ${statusLabel(pick.ship.ship_status)}: [site](${draft.card.uri}) · [ILO case](${pick.ship.ilo_url}) · ${how}`,
     ...(postUrl ? ['', `**Posted:** ${postUrl}`] : []),
     '',
     '```text',

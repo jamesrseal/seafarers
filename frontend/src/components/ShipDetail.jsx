@@ -98,7 +98,7 @@ export default function ShipDetail({ ship, onClose }) {
             {ship.ilo_url && (
               <a href={ship.ilo_url} target="_blank" rel="noreferrer"
                 className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                ILO Record
+                ILO Case
               </a>
             )}
             {ship.vessel_finder_url && (

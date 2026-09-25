@@ -194,7 +194,7 @@ export default function ShipTable({ ships, onSelect, highlighted }) {
           </tbody>
         </table>
         {ships.length === 0 && (
-          <div className="text-center py-16 text-gray-400">No records found</div>
+          <div className="text-center py-16 text-gray-400">No cases found</div>
         )}
       </div>
 
@@ -202,7 +202,7 @@ export default function ShipTable({ ships, onSelect, highlighted }) {
       <div className="shrink-0 bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-between text-sm text-gray-600">
         <span className="text-gray-500">
           {ships.length === 0
-            ? 'No records'
+            ? 'No cases'
             : `${pageIndex * PAGE_SIZE + 1}–${Math.min((pageIndex + 1) * PAGE_SIZE, ships.length)} of ${ships.length}`}
         </span>
         <div className="flex items-center gap-2">

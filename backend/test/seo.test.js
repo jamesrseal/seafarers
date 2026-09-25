@@ -56,7 +56,7 @@ test('a case page writes the case out in #root', () => {
   assert.match(root, /<dt>Reporting Org.<\/dt><dd>International Transport Workers&#39; Federation<\/dd>/);
   assert.match(root, /<h2>Circumstances<\/h2>\n<p>3 months owed wages<\/p>\n<p>Seafarers applied to insurer\?: Yes<br>Insurance certificate dates/);
   assert.match(root, /<h2>Updates<\/h2>\n<p>16 September 2026: Palau<br>\(From the Palau Ship Registry\)<\/p>\n<p>Partial payments have been made.<\/p>/);
-  assert.match(root, /<a href="https:\/\/wwwex.ilo.org\/dyn\/r\/abandonment\/seafarers\/details\?p3_abandonment_id=1815">ILO record<\/a>/);
+  assert.match(root, /<a href="https:\/\/wwwex.ilo.org\/dyn\/r\/abandonment\/seafarers\/details\?p3_abandonment_id=1815">ILO case<\/a>/);
 });
 
 test('case text is escaped, and a "$" in it is kept as written', () => {

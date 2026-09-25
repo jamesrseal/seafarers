@@ -82,7 +82,7 @@ export const countText = total => `Over ${(Math.floor(total / 10) * 10).toLocale
 
 export const explainerText = total =>
   `${countText(total)} Each dot is one case of seafarer abandonment. `
-  + 'Bigger dots mean more abandoned seafarers. Click a dot for the full case record.';
+  + 'Bigger dots mean more abandoned seafarers. Click a dot to read the full case.';
 
 // Every case as the site has it: the latest row per case, the ones with a port
 // the geocoder resolved, sized and coloured the way the map sizes and colours

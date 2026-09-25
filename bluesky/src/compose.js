@@ -15,7 +15,7 @@ const LINK_FEATURE = 'app.bsky.richtext.facet#link';
 const TEMPLATE_LITERALS = Object.freeze(new Set([
   'Fishing vessel ', ' (', ' flag)', ': ', ' seafarers', ' seafarer', 'Seafarers',
   ' abandoned', ' in ', ',', ' on ', '.', '\n\n', '“', '”',
-  'Latest update, ', 'Status: ', ' · ', 'ILO record',
+  'Latest update, ', 'Status: ', ' · ', 'ILO case',
 ]));
 
 const MONTH_NAMES = MONTHS.map(m => m[0].toUpperCase() + m.slice(1)).join('|');
@@ -88,7 +88,7 @@ function updateSegments(update, quote) {
 function footerSegments(ship) {
   return [
     literal('\n\n'), literal('Status: '), { kind: 'status', text: statusLabel(ship.ship_status) },
-    literal(' · '), { kind: 'literal', text: 'ILO record', linkTo: 'ilo' },
+    literal(' · '), { kind: 'literal', text: 'ILO case', linkTo: 'ilo' },
   ];
 }
 

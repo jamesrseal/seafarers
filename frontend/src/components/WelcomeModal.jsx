@@ -83,7 +83,7 @@ export default function WelcomeModal({ onClose, onAbout }) {
           </h3>
           <ul className="text-sm text-gray-600 mt-2 space-y-1.5 list-disc pl-5">
             <li>Each dot on the map is one case of seafarer abandonment. Bigger dots mean more abandoned seafarers. Color represents the case's status.</li>
-            <li>Click a dot for the full case record.</li>
+            <li>Click a dot to read the full case.</li>
             <li>Search, or filter by case status, ship flag, abandonment country and port.</li>
           </ul>
 

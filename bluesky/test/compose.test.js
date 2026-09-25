@@ -9,11 +9,11 @@ test('a case with little detail: one circumstances quote', () => {
   assert.equal(draft.text,
     'Nikolay Meshkov (Palau flag): 13 seafarers abandoned in Samsun, Türkiye, on 1 July 2026.\n\n'
     + '“Owed wages of 3 months. One of the seafarers has been onboard for over a year.”\n\n'
-    + 'Status: Unresolved · ILO record');
-  assert.equal(draft.graphemes, 203);
+    + 'Status: Unresolved · ILO case');
+  assert.equal(draft.graphemes, 201);
   assert.deepEqual(draft.facets, [
     { index: { byteStart: 0, byteEnd: 15 }, features: [{ $type: 'app.bsky.richtext.facet#link', uri: 'https://abandonedseafarers.org/?ship=1821' }] },
-    { index: { byteStart: 199, byteEnd: 209 }, features: [{ $type: 'app.bsky.richtext.facet#link', uri: nikolayMeshkov.ilo_url }] },
+    { index: { byteStart: 199, byteEnd: 207 }, features: [{ $type: 'app.bsky.richtext.facet#link', uri: nikolayMeshkov.ilo_url }] },
   ]);
 });
 
@@ -23,8 +23,8 @@ test('a resolved case with updates: both quotes, shortened to fit', () => {
     'Bird 16 (Comoros flag): 15 seafarers abandoned in Mersin, Türkiye, on 1 September 2024.\n\n'
     + '“2 Indian Officers have 4 months of unpaid salary.”\n\n'
     + 'Latest update, 15 June 2025: “The 3 crew members who complained confirmed that they received their outstanding wages.”\n\n'
-    + 'Status: Resolved · ILO record');
-  assert.equal(draft.graphemes, 291);
+    + 'Status: Resolved · ILO case');
+  assert.equal(draft.graphemes, 289);
 });
 
 test('a long back-and-forth: the latest update, never the letters before it', () => {
@@ -32,8 +32,8 @@ test('a long back-and-forth: the latest update, never the letters before it', ()
   assert.equal(draft.text,
     'Shreenath Ji (Panama flag): 10 seafarers abandoned in Dubai, United Arab Emirates, on 1 April 2025.\n\n'
     + 'Latest update, 16 June 2026: “Seafarer has been repatriated without receiving his outstanding wages.”\n\n'
-    + 'Status: Disputed · ILO record');
-  assert.equal(draft.graphemes, 233);
+    + 'Status: Disputed · ILO case');
+  assert.equal(draft.graphemes, 231);
 });
 
 test('the header leaves a missing value out rather than inventing one', () => {

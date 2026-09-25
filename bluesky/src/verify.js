@@ -96,7 +96,7 @@ function verifyDraft(draft, ship, { maxGraphemes = POST_MAX_GRAPHEMES } = {}) {
   if (!iloUrlPattern(id).test(ship.ilo_url ?? '')) problems.push(`ilo_url ${show(String(ship.ilo_url))} is not this case's ILO record`);
   const expected = [
     { uri: siteCaseUrl(id), text: String(ship.ship_name ?? '').trim() },
-    { uri: ship.ilo_url, text: 'ILO record' },
+    { uri: ship.ilo_url, text: 'ILO case' },
   ];
   if (draft.facets.length !== expected.length) problems.push(`${draft.facets.length} links, expected ${expected.length}`);
   expected.forEach((want, i) => {

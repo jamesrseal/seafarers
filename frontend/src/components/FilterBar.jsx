@@ -157,7 +157,7 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
         <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap items-end gap-3">
           {filterInputs(false)}
           <div className="flex items-end gap-3 ml-auto shrink-0">
-            <span className="text-sm text-gray-500 pb-1.5">{total} records</span>
+            <span className="text-sm text-gray-500 pb-1.5">{total} {total === 1 ? 'case' : 'cases'}</span>
             <ExportButton
               ships={ships}
               className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default"
@@ -195,7 +195,7 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
           )}
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">{total} records</span>
+          <span className="text-sm text-gray-500">{total} {total === 1 ? 'case' : 'cases'}</span>
           {hasFilter && (
             <button onClick={onClearAll} className="text-xs text-gray-400 hover:text-gray-600 underline">
               Reset
