@@ -69,11 +69,11 @@ const COUNT_FLOOR_RATIO = 0.5; // range scan must return ≥50% of the previous 
 const FILL_MIN_PREV     = 0.5; // only monitor fields populated on >50% of previous records
 const FILL_DROP_RATIO   = 0.5; // …and flag them if their fill-rate drops below half its prior value
 // Fields populated on most records regardless of status or subset — a collapse
-// here means a broken selector, not real data. A field the page no longer has
-// is left out of its records (see iloFields.js), which counts as empty here, so
-// a renamed field fails the run rather than slipping through. A field filled on
-// under FILL_MIN_PREV of the previous records isn't judged, which also exempts
-// each new field on the run that first captures it.
+// here means a broken selector, not real data. The ILO's page omits an empty
+// field entirely, so a field it renamed reads as blank on every case, and this
+// is what stops that run (see iloFields.js). A field filled on under
+// FILL_MIN_PREV of the previous records isn't judged, which also exempts each
+// new field on the run that first captures it.
 const MONITORED_FIELDS  = [
   'ship_name', 'port_of_abandonment', 'comments',
   'vessel_type', 'financial_security_provider', 'nationalities',
@@ -188,8 +188,9 @@ function extractApexFields() {
     circumstances:       val('P3_CIRCUMSTANCES') || '',
     comments:            commentsText(),
     vessel_finder_url:   imo ? `https://www.vesselfinder.com/?imo=${imo}` : null,
-    // Raw, and null where the element is missing: iloFields.js shapes these in
-    // Node, since this function runs in the page and can't import it.
+    // Raw, and null where the page has no such element, which is how it shows
+    // an empty field. iloFields.js shapes these in Node, since this function
+    // runs in the page and can't import it.
     ilo: {
       vessel_type:                 val('P3_IMO_SHIP_TYPE'),
       financial_security_provider: val('P3_PANDI'),

@@ -134,13 +134,22 @@ test('case fields: JSON for lists, blank strings for blank fields', () => {
   assert.equal(JSON.parse(fields.actions_taken).length, 2);
 });
 
-test('case fields: a field missing from the page is left out, not blanked', () => {
+test('case fields: a field missing from the page is blank, as the ILO omits empty ones', () => {
+  // Case 1753 has no vessel type: its page has no P3_IMO_SHIP_TYPE element at all.
   const fields = iloCaseFields({
-    vessel_type: 'Tug', financial_security_provider: null, nationalities: null,
+    vessel_type: null, financial_security_provider: null, nationalities: null,
     payment: null, repatriation: RAW.case5Repat, actions: undefined,
   });
-  assert.deepEqual(Object.keys(fields).sort(), ['repatriation_latest', 'repatriation_status', 'vessel_type']);
-  assert.equal(fields.repatriation_latest, 'Repatriated');
+  assert.deepEqual(fields, {
+    vessel_type: '',
+    financial_security_provider: '',
+    nationalities: '',
+    payment_status: '',
+    payment_latest: '',
+    repatriation_status: fields.repatriation_status,
+    repatriation_latest: 'Repatriated',
+    actions_taken: '',
+  });
 });
 
 test('the same input always gives the same stored text', () => {

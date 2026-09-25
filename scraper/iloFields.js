@@ -120,27 +120,25 @@ function latestStatus(entries, vocabulary) {
 }
 
 // The page's raw values, as extractApexFields reads them, to the stored fields.
-// A value of null means the page had no such element — a renamed field, not an
-// empty one — and its keys are left out, so ingest keeps what it already has
-// instead of blanking it. The sanity guard counts the missing field as empty.
+// A null value — no such element on the page — is a blank field: the ILO's page
+// leaves an empty field out altogether rather than rendering it empty. A field
+// the ILO renamed would look the same, blank on every case, and the sanity
+// guard's fill-rate check (MONITORED_FIELDS in scrape.js) stops that run.
 function iloCaseFields(raw) {
-  const out = {};
+  const text = value => collapse(value ?? '');
   const list = value => (value.length ? JSON.stringify(value) : '');
-  if (raw.vessel_type != null) out.vessel_type = collapse(raw.vessel_type);
-  if (raw.financial_security_provider != null) out.financial_security_provider = collapse(raw.financial_security_provider);
-  if (raw.nationalities != null) out.nationalities = list(parseNationalities(raw.nationalities));
-  if (raw.payment != null) {
-    const entries = parseEntries(raw.payment);
-    out.payment_status = list(entries);
-    out.payment_latest = latestStatus(entries, PAYMENT_STATUSES);
-  }
-  if (raw.repatriation != null) {
-    const entries = parseEntries(raw.repatriation);
-    out.repatriation_status = list(entries);
-    out.repatriation_latest = latestStatus(entries, REPATRIATION_STATUSES);
-  }
-  if (raw.actions != null) out.actions_taken = list(parseEntries(raw.actions));
-  return out;
+  const payment = parseEntries(raw.payment);
+  const repatriation = parseEntries(raw.repatriation);
+  return {
+    vessel_type: text(raw.vessel_type),
+    financial_security_provider: text(raw.financial_security_provider),
+    nationalities: list(parseNationalities(raw.nationalities)),
+    payment_status: list(payment),
+    payment_latest: latestStatus(payment, PAYMENT_STATUSES),
+    repatriation_status: list(repatriation),
+    repatriation_latest: latestStatus(repatriation, REPATRIATION_STATUSES),
+    actions_taken: list(parseEntries(raw.actions)),
+  };
 }
 
 module.exports = {

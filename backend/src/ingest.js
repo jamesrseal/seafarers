@@ -29,8 +29,8 @@ const norm = v => (v === null || v === undefined ? '' : String(v));
 // The filled row keeps its scraped_at, so the dates the site reports from
 // history (new cases, status changes, the feed, sitemap lastmod) don't move.
 //
-// A record without one of the added columns — an older saved scrape, or a
-// field the page stopped serving — keeps the latest row's value for it.
+// A record without one of the added columns — a scraped_*.json saved before
+// the column existed, re-ingested — keeps the latest row's value for it.
 function ingestRun(db, scrapedAt, records) {
   const latestRow = db.prepare(
     `SELECT * FROM ships WHERE abandonment_id = ? ORDER BY scraped_at DESC LIMIT 1`

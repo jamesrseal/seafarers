@@ -56,7 +56,7 @@ SQLite at `backend/data/seafarers.db`. The committed file is the live data: Rend
 - `ships` — ingest (`backend/src/ingest.js`) compares each scraped ship with its latest row and inserts it (stamped with the run's `scraped_at`) only when a field differs, so history holds one row per actual change. Two things are written in place on the latest row instead, since neither is a change to the case:
   - **a column added after that row was written.** `backend/src/db/migrate.js` adds `ADDED_COLUMNS` to an existing database (schema.sql declares them for a fresh one; `test/migrate.test.js` fails if the two drift). On older rows they're NULL, meaning *not captured*, not blank. The first scrape to see a NULL fills it in place and reports `filled`; it doesn't count as a change. Without this, adding a field writes a history row for every case.
   - **a derived column** (`DERIVED_COLUMNS`: `payment_latest`, `repatriation_latest`) that no longer matches. They aren't part of the change check, so a new way of deriving them is never history.
-  A record without one of the added columns keeps the stored value, so a field the ILO page stops serving, or an older saved scrape, can't blank it.
+  A record without one of the added columns (an older saved `scraped_*.json`) keeps the stored value rather than blanking it.
 - `scrape_runs` — one row per ingest (`scraped_at`, `received`, `inserted`). This, not `ships`, records when scrapes ran. The header's "Updated" time is the later of its newest `scraped_at` and the last app-code commit (`__APP_UPDATED__`, set in `frontend/vite.config.js`).
 
 The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`. `idx_case_scraped (abandonment_id, scraped_at)` is what keeps that cheap: without it each subquery scans the ship's history, and `/api/ships/facets`, which runs nine of them, took ~7s on the live site and ~150ms with it.
@@ -134,7 +134,7 @@ Six fields arrive as markup or packed text and are shaped by `scraper/iloFields.
 - `payment_latest`, `repatriation_latest`: the newest entry's status, in the ILO's own spelling (`PAYMENT_STATUSES`, `REPATRIATION_STATUSES`).
 - `vessel_type`, `financial_security_provider`: text.
 
-`extractApexFields` runs in the page, so it returns raw values and `scrapeOne` shapes them in Node. When a field's element is missing from the page, its keys are left out rather than blanked; ingest then keeps the stored value, and the sanity guard (`MONITORED_FIELDS`) counts the field as empty. **The stored text is `iloFields.js`'s output, so changing that output rewrites every case's history on the next refresh.** Only the derived `*_latest` columns are exempt.
+`extractApexFields` runs in the page, so it returns raw values and `scrapeOne` shapes them in Node. **The ILO's page leaves an empty field out entirely** (no input, no container), so a missing element is stored as blank. A field the ILO renames would therefore read as blank on every case; the sanity guard's fill-rate check (`MONITORED_FIELDS`) is what stops that run before ingest. **The stored text is `iloFields.js`'s output, so changing that output rewrites every case's history on the next refresh.** Only the derived `*_latest` columns are exempt.
 
 ### Frontend
 - `App.jsx` owns all state (filters, selected ship, view mode)
