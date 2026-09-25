@@ -4,6 +4,7 @@
   "main": "scrape.js",
   "scripts": {
     "scrape": "node scrape.js",
+    "test": "node --test",
     "install-browser": "npx playwright install chromium"
   },
   "dependencies": {

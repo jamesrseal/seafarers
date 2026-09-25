@@ -8,7 +8,7 @@ A dashboard for the ILO Abandoned Seafarers database. Four components:
 
 - **`backend/`** — Node.js/Express REST API + SQLite (via `better-sqlite3`)
 - **`frontend/`** — React 18 + Vite + Tailwind CSS + React Leaflet
-- **`scraper/`** — Python + Playwright scraper for the ILO AJAX website
+- **`scraper/`** — Node.js + Playwright scraper for the ILO AJAX website
 - **`bluesky/`** — daily post of one case to @abandonedseafarers.org (Node 22.13+, no dependencies)
 
 ## Commands
@@ -44,6 +44,8 @@ node scrape.js --start 1 --end 1705 --api http://localhost:3001 --concurrency 4
 
 # Re-scrape all Unresolved + Disputed records to pick up status changes
 node scrape.js --rescan-open --api http://localhost:3001 --concurrency 4
+
+npm test           # node:test: iloFields.js, no install needed
 ```
 
 ## Architecture
@@ -51,7 +53,10 @@ node scrape.js --rescan-open --api http://localhost:3001 --concurrency 4
 ### Database
 SQLite at `backend/data/seafarers.db`. The committed file is the live data: Render's free plan has no persistent disk, so `start.sh` copies it to `DATABASE_PATH` (`/data/seafarers.db`) on every deploy and restart. Schema is in `backend/src/db/schema.sql`.
 
-- `ships` — ingest compares each scraped ship with its latest row and inserts it (stamped with the run's `scraped_at`) only when a field differs, so history holds one row per actual change.
+- `ships` — ingest (`backend/src/ingest.js`) compares each scraped ship with its latest row and inserts it (stamped with the run's `scraped_at`) only when a field differs, so history holds one row per actual change. Two things are written in place on the latest row instead, since neither is a change to the case:
+  - **a column added after that row was written.** `backend/src/db/migrate.js` adds `ADDED_COLUMNS` to an existing database (schema.sql declares them for a fresh one; `test/migrate.test.js` fails if the two drift). On older rows they're NULL, meaning *not captured*, not blank. The first scrape to see a NULL fills it in place and reports `filled`; it doesn't count as a change. Without this, adding a field writes a history row for every case.
+  - **a derived column** (`DERIVED_COLUMNS`: `payment_latest`, `repatriation_latest`) that no longer matches. They aren't part of the change check, so a new way of deriving them is never history.
+  A record without one of the added columns keeps the stored value, so a field the ILO page stops serving, or an older saved scrape, can't blank it.
 - `scrape_runs` — one row per ingest (`scraped_at`, `received`, `inserted`). This, not `ships`, records when scrapes ran. The header's "Updated" time is the later of its newest `scraped_at` and the last app-code commit (`__APP_UPDATED__`, set in `frontend/vite.config.js`).
 
 The `GET /api/ships` query selects only the most recent row per `abandonment_id` using a correlated subquery on `MAX(scraped_at)`. `idx_case_scraped (abandonment_id, scraped_at)` is what keeps that cheap: without it each subquery scans the ship's history, and `/api/ships/facets`, which runs nine of them, took ~7s on the live site and ~150ms with it.
@@ -69,7 +74,7 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 - **Testing:** test the script locally with a stub `gh` on PATH and `NOW=<epoch seconds>`.
 
 ### Tests in CI
-`.github/workflows/test.yml` runs both suites on every push to `master` and every pull request. Nothing ran them automatically before, so each guard was only as good as someone remembering: the status colours copied into `backend/src/status.js` and `bluesky/src/status.js`, the flag icons the table needs, the tags the SEO pages fill in, the committed social card's pixels, and whether every port has a basemap. It doesn't gate the daily refresh, which commits straight to `master` — it reports right after.
+`.github/workflows/test.yml` runs the backend, frontend and scraper suites on every push to `master` and every pull request. Nothing ran them automatically before, so each guard was only as good as someone remembering: the status colours copied into `backend/src/status.js` and `bluesky/src/status.js`, the flag icons the table needs, the tags the SEO pages fill in, the committed social card's pixels, whether every port has a basemap, and how the scraper reads the ILO's fields. The Bluesky suite isn't among them: run it by hand. It doesn't gate the daily refresh, which commits straight to `master` — it reports right after.
 
 ### Scheduled refresh
 `.github/workflows/refresh-data.yml` runs a full scrape once a day, started by the scheduler, and on demand via workflow_dispatch. It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, draws a basemap for any port the scrape has just introduced, and commits `backend/data/seafarers.db` plus those panels to `master` ("Refresh ILO data (N ships, M new)", with "+ P basemap(s)" when it drew any); Render redeploys on the push. It installs the backend's dev dependencies, because the baker needs `jpeg-js`. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
@@ -121,7 +126,15 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 - **The basemap is credited on every card that carries one** ("© OpenStreetMap contributors"), and in `backend/assets/CREDITS.md`.
 
 ### Scraper
-The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. IDs 1–1700 are iterated; missing/404 pages are silently skipped. Port geocoding uses `geopy.Nominatim` with the `cleaned_ports_list.csv` overrides (tilde-delimited). Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
+The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. The daily refresh scans every known case ID, then carries on until 30 consecutive empty pages; missing/404 pages are silently skipped. Port geocoding (`geocode.js`) uses Nominatim with the `cleaned_ports_list.csv` overrides (tilde-delimited). Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
+
+Six fields arrive as markup or packed text and are shaped by `scraper/iloFields.js`, which is pure and tested in CI (`npm test --prefix scraper`):
+- `nationalities`: JSON `[{country, count}]` from "Azerbaijan (11); Türkiye (1)". Only a trailing `(n)` is a count, and `count` is null where the ILO gives none.
+- `payment_status`, `repatriation_status`, `actions_taken`: JSON `[{date, dateText, status, detail}]`, **newest first**. `date` is a partial ISO date (`2025-10-08`, `2004-10`, `2004`). The ILO lists entries in either order, and its markup is often malformed.
+- `payment_latest`, `repatriation_latest`: the newest entry's status, in the ILO's own spelling (`PAYMENT_STATUSES`, `REPATRIATION_STATUSES`).
+- `vessel_type`, `financial_security_provider`: text.
+
+`extractApexFields` runs in the page, so it returns raw values and `scrapeOne` shapes them in Node. When a field's element is missing from the page, its keys are left out rather than blanked; ingest then keeps the stored value, and the sanity guard (`MONITORED_FIELDS`) counts the field as empty. **The stored text is `iloFields.js`'s output, so changing that output rewrites every case's history on the next refresh.** Only the derived `*_latest` columns are exempt.
 
 ### Frontend
 - `App.jsx` owns all state (filters, selected ship, view mode)

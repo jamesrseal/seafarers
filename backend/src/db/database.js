@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { migrate } = require('./migrate');
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../../data/seafarers.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
@@ -16,5 +17,6 @@ db.pragma('foreign_keys = ON');
 
 const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
 db.exec(schema);
+migrate(db);
 
 module.exports = db;

@@ -38,6 +38,7 @@ const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
 const { geocode, loadPortOverrides, seedGeocache } = require('./geocode');
+const { iloCaseFields } = require('./iloFields');
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -67,9 +68,17 @@ const EMPTY_STREAK_LIMIT = 30; // auto-extend stops after this many consecutive 
 const COUNT_FLOOR_RATIO = 0.5; // range scan must return ≥50% of the previous record count
 const FILL_MIN_PREV     = 0.5; // only monitor fields populated on >50% of previous records
 const FILL_DROP_RATIO   = 0.5; // …and flag them if their fill-rate drops below half its prior value
-// Fields expected to be populated on essentially every record regardless of
-// status or subset — a collapse here means a broken selector, not real data.
-const MONITORED_FIELDS  = ['ship_name', 'port_of_abandonment', 'comments'];
+// Fields populated on most records regardless of status or subset — a collapse
+// here means a broken selector, not real data. A field the page no longer has
+// is left out of its records (see iloFields.js), which counts as empty here, so
+// a renamed field fails the run rather than slipping through. A field filled on
+// under FILL_MIN_PREV of the previous records isn't judged, which also exempts
+// each new field on the run that first captures it.
+const MONITORED_FIELDS  = [
+  'ship_name', 'port_of_abandonment', 'comments',
+  'vessel_type', 'financial_security_provider', 'nationalities',
+  'payment_status', 'repatriation_status', 'actions_taken',
+];
 
 const BASE_URL = 'https://wwwex.ilo.org/dyn/r/abandonment/seafarers/details';
 
@@ -179,6 +188,16 @@ function extractApexFields() {
     circumstances:       val('P3_CIRCUMSTANCES') || '',
     comments:            commentsText(),
     vessel_finder_url:   imo ? `https://www.vesselfinder.com/?imo=${imo}` : null,
+    // Raw, and null where the element is missing: iloFields.js shapes these in
+    // Node, since this function runs in the page and can't import it.
+    ilo: {
+      vessel_type:                 val('P3_IMO_SHIP_TYPE'),
+      financial_security_provider: val('P3_PANDI'),
+      nationalities:               val('P3_NATIONALITIES'),
+      payment:                     val('P3_PAYMENT'),
+      repatriation:                val('P3_REPAT'),
+      actions:                     val('P3_ACTIONS'),
+    },
   };
 }
 
@@ -224,6 +243,7 @@ async function scrapeOne(page, id, portOverrides) {
     fishing_vessel:      /fishing/i.test(fields.vessel_type) ? 1 : 0,
     vessel_finder_url:   fields.vessel_finder_url,
     last_activity_date:  parseLastActivityDate(fields.comments),
+    ...iloCaseFields(fields.ilo),
   };
 }
 

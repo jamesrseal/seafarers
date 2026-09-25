@@ -19,7 +19,17 @@ CREATE TABLE IF NOT EXISTS ships (
   ilo_url              TEXT,
   vessel_finder_url    TEXT,
   flag_url             TEXT,  -- unused: the frontend draws flags from `flag`
-  last_activity_date   TEXT
+  last_activity_date   TEXT,
+  -- Added later: migrate.js adds these to an existing database, and its
+  -- ADDED_COLUMNS must list the same ones. Declared here for a fresh one.
+  vessel_type                 TEXT,
+  financial_security_provider TEXT,
+  nationalities               TEXT,
+  payment_status              TEXT,
+  payment_latest              TEXT,
+  repatriation_status         TEXT,
+  repatriation_latest         TEXT,
+  actions_taken               TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_abandonment_id ON ships(abandonment_id);

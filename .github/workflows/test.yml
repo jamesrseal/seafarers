@@ -3,8 +3,9 @@ name: Tests
 # Nothing ran the test suites automatically, so every guard in them was only as
 # good as someone remembering: the status colours copied into the backend and
 # the Bluesky poster, the flag icons the table needs, the tags the SEO pages
-# fill in, the pixels of the committed social card, and whether every port has a
-# basemap. They run here on every push and pull request instead.
+# fill in, the pixels of the committed social card, whether every port has a
+# basemap, and how the scraper reads the ILO's fields. They run here on every
+# push and pull request instead.
 #
 # This does not gate the daily refresh, which commits straight to master — it
 # reports right after, rather than whenever tests were next run by hand.
@@ -51,3 +52,8 @@ jobs:
 
       - name: Frontend tests
         run: npm test --prefix frontend
+
+      # The scraper's field parsing is pure, and its tests import nothing else,
+      # so they run without installing Playwright.
+      - name: Scraper tests
+        run: npm test --prefix scraper
