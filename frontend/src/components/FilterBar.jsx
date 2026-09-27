@@ -102,31 +102,51 @@ function FacetSelect({ label, facet, value, onChange, full }) {
 // they stay visible while it's closed. On desktop it's a quiet line under the
 // first row, styled like the labels: the first row has no width to spare, and
 // a button in it would push Export and Reset onto a line of their own. In the
-// drawer it's a full-width button.
+// drawer it's blue text under a divider, so it reads as something to tap and
+// not as one more dropdown; its tap target still spans the sheet.
 function MoreToggle({ open, active, onClick, full }) {
+  const badge = active > 0 && (
+    <span className="bg-blue-600 text-white text-xs font-semibold normal-case tracking-normal rounded-full px-1.5 py-0.5 leading-none">
+      {active}
+    </span>
+  );
+  const chevron = size => (
+    <svg
+      className={`${size} transition-transform ${open ? 'rotate-180' : ''}`}
+      fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+    </svg>
+  );
+
+  if (full) {
+    return (
+      <div className="border-t border-gray-200 pt-2">
+        <button
+          type="button"
+          onClick={onClick}
+          aria-expanded={open}
+          className="w-full flex items-center gap-1.5 py-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+        >
+          {open ? 'Fewer filters' : 'More filters'}
+          {badge}
+          {chevron('w-4 h-4')}
+        </button>
+      </div>
+    );
+  }
   return (
     <button
       type="button"
       onClick={onClick}
       aria-expanded={open}
-      className={full
-        ? 'w-full flex items-center justify-between px-3 py-2 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-50'
-        : 'flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-800'}
+      className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-800"
     >
       <span className="flex items-center gap-1.5">
         More filters
-        {active > 0 && (
-          <span className="bg-blue-600 text-white text-xs font-semibold normal-case tracking-normal rounded-full px-1.5 py-0.5 leading-none">
-            {active}
-          </span>
-        )}
+        {badge}
       </span>
-      <svg
-        className={`${full ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`}
-        fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-      </svg>
+      {chevron('w-3.5 h-3.5 text-gray-500')}
     </button>
   );
 }
