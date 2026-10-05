@@ -9,6 +9,12 @@ function latest(...values) {
   return times.length ? new Date(Math.max(...times)) : null;
 }
 
+// The ILO's Cloudflare has refused the daily refresh since 4 October 2026, so
+// the cases stop at the last refresh that got through. While this is true the
+// header says so beside "Updated", which an app-code change can still move
+// forward. Set it to false once the ILO allows the scraper again.
+const REFRESH_BLOCKED = true;
+
 function fmtDateTime(date) {
   if (!date) return '—';
   return date.toLocaleString('en-GB', {
@@ -112,7 +118,29 @@ export default function Header() {
             </a>
           </p>
         </div>
-        <div className="text-right text-xs text-gray-400">
+        <div className="relative text-right text-xs text-gray-400">
+          {REFRESH_BLOCKED && (
+            // A tooltip rather than title text, so a tap shows it on a phone too.
+            <span className="group">
+              <span
+                tabIndex={0}
+                role="img"
+                aria-label="Warning"
+                aria-describedby="refresh-blocked"
+                className="mr-1 cursor-help rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-yellow-300"
+              >
+                ⚠️
+              </span>
+              <span
+                id="refresh-blocked"
+                role="tooltip"
+                className="invisible group-hover:visible group-focus-within:visible absolute right-0 top-full mt-1 w-60 z-[1100] rounded bg-gray-800 px-2.5 py-1.5 text-left text-gray-200 shadow-lg"
+              >
+                The ILO has started blocking automated access to its database, so this site can't update for now.
+                {dataUpdated && <> The cases shown are as of {fmtDateTime(new Date(dataUpdated))}.</>}
+              </span>
+            </span>
+          )}
           Updated: <span className="text-gray-300">{fmtDateTime(updated)}</span>
         </div>
       </div>
