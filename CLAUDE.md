@@ -79,6 +79,8 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 ### Scheduled refresh
 `.github/workflows/refresh-data.yml` runs a full scrape once a day, started by the scheduler, and on demand via workflow_dispatch. It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, draws a basemap for any port the scrape has just introduced, and commits `backend/data/seafarers.db` plus those panels to `master` ("Refresh ILO data (N ships, M new)", with "+ P basemap(s)" when it drew any); Render redeploys on the push. It installs the backend's dev dependencies, because the baker needs `jpeg-js`. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
 
+**Paused since 5 October 2026** (`REFRESH_TIME_UTC=off`). Since 4 October the ILO's Cloudflare has answered every automated request to `wwwex.ilo.org` with a 403, while browsers still load it, so both refreshes scraped 0 records and the sanity guard stopped them. The way back is the ILO allowing the scraper. Set the variable back to a time once they do.
+
 ### API Endpoints
 | Method | Path | Description |
 |--------|------|-------------|
@@ -127,6 +129,8 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 
 ### Scraper
 The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. The daily refresh scans every known case ID, then carries on until 30 consecutive empty pages; missing/404 pages are silently skipped. Port geocoding (`geocode.js`) uses Nominatim with the `cleaned_ports_list.csv` overrides (tilde-delimited). Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
+- **A 403 is the ILO's Cloudflare refusing the scraper.** It isn't retried. `BLOCK_LIMIT` (4) in a row stop the run, with the Cloudflare Ray ID, instead of reading every page as empty and reporting "0 records" forty minutes later.
+- **The scraper says who it is.** It appends `SCRAPER_ID` (project, site, contact) to the browser's own User-Agent, so the ILO can recognise it. It's appended, never substituted: the request still says it's a headless browser. Don't make it pass for a person's.
 
 Six fields arrive as markup or packed text and are shaped by `scraper/iloFields.js`, which is pure and tested in CI (`npm test --prefix scraper`):
 - `nationalities`: JSON `[{country, count}]` from "Azerbaijan (11); Türkiye (1)". Only a trailing `(n)` is a count, and `count` is null where the ILO gives none.

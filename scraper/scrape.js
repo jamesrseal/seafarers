@@ -26,6 +26,8 @@
  *   Before ingesting, a sanity guard compares the run to the current snapshot and
  *                 refuses to overwrite good data if the scrape looks broken (0 records,
  *                 record count cratered, or a monitored field's fill-rate collapsed).
+ *   A 403 is the ILO's Cloudflare refusing the scraper. It isn't retried, and
+ *                 BLOCK_LIMIT in a row stop the run with the Cloudflare Ray ID.
  *
  * First run:
  *   npm install
@@ -81,6 +83,20 @@ const MONITORED_FIELDS  = [
 ];
 
 const BASE_URL = 'https://wwwex.ilo.org/dyn/r/abandonment/seafarers/details';
+
+// Appended to the browser's own User-Agent, so the ILO can see who is asking
+// and how to reach us. Appended, never substituted: the request still says it
+// comes from a headless browser, and must not pass for a person's.
+const SCRAPER_ID = 'AbandonedSeafarers/1.0 (+https://abandonedseafarers.org; abandonedseafarers@gmail.com)';
+
+// The ILO's Cloudflare answers a client it refuses with a 403 on every page.
+// After this many in a row the run stops, rather than reading each of ~1,860
+// pages as empty and reporting "0 records" forty minutes later.
+const BLOCK_LIMIT = 4;
+
+// A 403: the ILO refused this request. Not retried — a block doesn't lift in
+// seconds, and retrying only adds refused requests.
+class BlockedError extends Error {}
 
 // ---------------------------------------------------------------------------
 // HTTP helpers
@@ -204,7 +220,8 @@ function extractApexFields() {
 
 // ---------------------------------------------------------------------------
 // Scrape one page — throws on network/timeout/HTTP-5xx/429 error (retriable),
-// returns null for a genuinely empty page (200 with no record)
+// throws BlockedError on a 403, returns null for a genuinely empty page (200
+// with no record)
 // ---------------------------------------------------------------------------
 async function scrapeOne(page, id, portOverrides) {
   const url = `${BASE_URL}?p3_abandonment_id=${id}`;
@@ -213,8 +230,13 @@ async function scrapeOne(page, id, portOverrides) {
   // page.goto resolves even on HTTP error statuses, so a Cloudflare 502/503/504
   // (ILO origin down) or 429 (rate limited) would otherwise be parsed as a page
   // with no form fields and silently counted as an empty record. Treat these as
-  // retriable errors so scrapeWithRetry backs off and retries instead.
+  // retriable errors so scrapeWithRetry backs off and retries instead. A 403 is
+  // a refusal, not an outage: see BlockedError.
   const status = response ? response.status() : 0;
+  if (status === 403) {
+    const ray = response.headers()['cf-ray'];
+    throw new BlockedError(`HTTP 403 from ${new URL(url).host}${ray ? `, Cloudflare Ray ID ${ray}` : ''}`);
+  }
   if (status === 0 || status === 429 || status >= 500) {
     throw new Error(`HTTP ${status || 'no response'} — server/gateway error`);
   }
@@ -249,17 +271,31 @@ async function scrapeOne(page, id, portOverrides) {
 }
 
 // ---------------------------------------------------------------------------
-// Scrape one ID with retries — always returns null on permanent failure
+// Scrape one ID with retries — returns null on permanent failure, and throws
+// once BLOCK_LIMIT pages in a row have been refused
 // ---------------------------------------------------------------------------
-async function scrapeWithRetry(browser, id, portOverrides) {
+let consecutiveBlocks = 0;
+
+function blocked(id, e) {
+  consecutiveBlocks++;
+  if (consecutiveBlocks >= BLOCK_LIMIT) {
+    throw new BlockedError(`The ILO refused ${consecutiveBlocks} pages in a row (${e.message}). Its Cloudflare is blocking the scraper — not ingesting.`);
+  }
+  console.log(`  [${id}] refused — ${e.message}`);
+  return null;
+}
+
+async function scrapeWithRetry(context, id, portOverrides) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const page = await browser.newPage();
+    const page = await context.newPage();
     try {
       const result = await scrapeOne(page, id, portOverrides);
       await page.close();
+      consecutiveBlocks = 0;
       return result; // null = empty page (not an error)
     } catch (e) {
       await page.close();
+      if (e instanceof BlockedError) return blocked(id, e);
       if (attempt < MAX_RETRIES) {
         const delay = RETRY_BASE_MS * attempt;
         console.log(`  [${id}] attempt ${attempt}/${MAX_RETRIES} failed — retrying in ${delay / 1000}s (${e.message.split('\n')[0]})`);
@@ -275,12 +311,12 @@ async function scrapeWithRetry(browser, id, portOverrides) {
 // ---------------------------------------------------------------------------
 // Run batches over a list of IDs, logging hits and misses
 // ---------------------------------------------------------------------------
-async function runBatches(browser, ids, portOverrides) {
+async function runBatches(context, ids, portOverrides) {
   const records = [];
   for (let i = 0; i < ids.length; i += CONCURRENCY) {
     const batch   = ids.slice(i, i + CONCURRENCY);
     const results = await Promise.all(
-      batch.map(id => scrapeWithRetry(browser, id, portOverrides))
+      batch.map(id => scrapeWithRetry(context, id, portOverrides))
     );
     for (let j = 0; j < batch.length; j++) {
       const r = results[j];
@@ -299,7 +335,7 @@ async function runBatches(browser, ids, portOverrides) {
 // ---------------------------------------------------------------------------
 // Auto-extend: probe IDs beyond END until EMPTY_STREAK_LIMIT consecutive misses
 // ---------------------------------------------------------------------------
-async function autoExtend(browser, fromId, portOverrides) {
+async function autoExtend(context, fromId, portOverrides) {
   console.log(`\nAuto-extending from ID ${fromId} (stops after ${EMPTY_STREAK_LIMIT} consecutive empty pages)…`);
   const records = [];
   let id           = fromId;
@@ -308,7 +344,7 @@ async function autoExtend(browser, fromId, portOverrides) {
   while (emptyStreak < EMPTY_STREAK_LIMIT) {
     const batch   = Array.from({ length: CONCURRENCY }, (_, i) => id + i);
     const results = await Promise.all(
-      batch.map(bid => scrapeWithRetry(browser, bid, portOverrides))
+      batch.map(bid => scrapeWithRetry(context, bid, portOverrides))
     );
     for (let j = 0; j < batch.length; j++) {
       const r = results[j];
@@ -400,6 +436,14 @@ function sanityCheck(records, prev) {
   return { ok: reasons.length === 0, reasons };
 }
 
+// The browser's own User-Agent, which SCRAPER_ID is appended to.
+async function browserUserAgent(browser) {
+  const page = await browser.newPage();
+  const userAgent = await page.evaluate(() => navigator.userAgent);
+  await page.close();
+  return userAgent;
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -413,6 +457,7 @@ async function main() {
   seedGeocache(prev);
 
   const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ userAgent: `${await browserUserAgent(browser)} ${SCRAPER_ID}` });
   let records   = [];
 
   if (RESCAN_OPEN) {
@@ -420,13 +465,13 @@ async function main() {
     console.log(`scraped_at: ${scrapedAt}\n`);
     const ids = await getOpenIds();
     console.log(`Fetched ${ids.length} open IDs from API\n`);
-    records = await runBatches(browser, ids, portOverrides);
+    records = await runBatches(context, ids, portOverrides);
   } else {
     console.log(`Mode: range scan — IDs ${START}–${END} + auto-extend | concurrency=${CONCURRENCY}`);
     console.log(`scraped_at: ${scrapedAt}\n`);
     const ids = Array.from({ length: END - START + 1 }, (_, i) => START + i);
-    records = await runBatches(browser, ids, portOverrides);
-    const extended = await autoExtend(browser, END + 1, portOverrides);
+    records = await runBatches(context, ids, portOverrides);
+    const extended = await autoExtend(context, END + 1, portOverrides);
     records.push(...extended);
   }
 
@@ -472,4 +517,8 @@ async function main() {
   }
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch(err => {
+  console.error(err instanceof BlockedError ? `
+❌ ${err.message}` : err);
+  process.exit(1);
+});
