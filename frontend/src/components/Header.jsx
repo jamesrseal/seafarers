@@ -9,19 +9,12 @@ function latest(...values) {
   return times.length ? new Date(Math.max(...times)) : null;
 }
 
-// The ILO's Cloudflare has refused the daily refresh since 4 October 2026, so
-// the cases stop at the last refresh that got through. While this is true the
-// header says so beside "Updated", which an app-code change can still move
-// forward. Set it to false once the ILO allows the scraper again.
+// The ILO's Cloudflare has refused the daily refresh since 4 October 2026.
+// While this is true the header says so beside "Updated", with the date the
+// cases were last updated: "Updated" also moves for an app-code change, and
+// this date only for the data. Set it to false once the ILO allows the
+// scraper again.
 const REFRESH_BLOCKED = true;
-
-// The newest run that read every case. Cases imported by hand from saved pages
-// (scraper/import-pages.js) are a run of their own, a few records long: it moves
-// "Updated", but not the date the other cases are from.
-function lastFullRefresh(runs) {
-  const most = Math.max(0, ...runs.map(r => r.record_count));
-  return runs.find(r => r.record_count >= most / 2)?.scraped_at ?? null;
-}
 
 function fmtDateTime(date) {
   if (!date) return '—';
@@ -35,15 +28,11 @@ export default function Header() {
   // undefined while /api/scrapes loads, so the app's commit time doesn't show
   // briefly and then jump forward; null if it failed or has no runs.
   const [dataUpdated, setDataUpdated] = useState(undefined);
-  const [fullRefresh, setFullRefresh] = useState(null);
 
   useEffect(() => {
     fetch('/api/scrapes')
       .then(r => r.json())
-      .then(runs => {
-        setDataUpdated(runs[0]?.scraped_at ?? null);
-        setFullRefresh(lastFullRefresh(runs));
-      })
+      .then(runs => setDataUpdated(runs[0]?.scraped_at ?? null))
       .catch(() => setDataUpdated(null));
   }, []);
 
@@ -148,10 +137,8 @@ export default function Header() {
                 role="tooltip"
                 className="invisible group-hover:visible group-focus-within:visible absolute right-0 top-full mt-1 w-60 z-[1100] rounded bg-gray-800 px-2.5 py-1.5 text-left text-gray-200 shadow-lg"
               >
-                The ILO has started blocking automated access to its database, so this site can't update for now.
-                {fullRefresh && (fullRefresh === dataUpdated
-                  ? <> The cases shown are as of {fmtDateTime(new Date(fullRefresh))}.</>
-                  : <> Cases are as of {fmtDateTime(new Date(fullRefresh))}, except new ones added by hand since.</>)}
+                The ILO has started blocking automated access to its database.
+                {dataUpdated && <> Cases last updated {fmtDateTime(new Date(dataUpdated))}.</>}
               </span>
             </span>
           )}
