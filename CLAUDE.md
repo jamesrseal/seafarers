@@ -45,6 +45,11 @@ node scrape.js --start 1 --end 1705 --api http://localhost:3001 --concurrency 4
 # Re-scrape all Unresolved + Disputed records to pick up status changes
 node scrape.js --rescan-open --api http://localhost:3001 --concurrency 4
 
+# Import case pages saved by hand while the ILO blocks the scraper
+# (Chrome: Save as "Webpage, Single File", named by case ID, e.g. 1835.mhtml)
+node import-pages.js "../new case pages" --dry-run   # read and print, write nothing
+node import-pages.js "../new case pages"             # ingest into ../backend/data/seafarers.db
+
 npm test           # node:test: iloFields.js, no install needed
 ```
 
@@ -80,6 +85,12 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 `.github/workflows/refresh-data.yml` runs a full scrape once a day, started by the scheduler, and on demand via workflow_dispatch. It starts the backend on the runner against the committed DB, scrapes into it, checkpoints the WAL into the main file, draws a basemap for any port the scrape has just introduced, and commits `backend/data/seafarers.db` plus those panels to `master` ("Refresh ILO data (N ships, M new)", with "+ P basemap(s)" when it drew any); Render redeploys on the push. It installs the backend's dev dependencies, because the baker needs `jpeg-js`. Runs dispatched from other branches are dry runs that upload the DB as an artifact. The live site's ingest endpoint stays locked by `INGEST_TOKEN` in Render and isn't used by the refresh.
 
 **Paused since 5 October 2026** (`REFRESH_TIME_UTC=off`). Since 4 October the ILO's Cloudflare has answered every automated request to `wwwex.ilo.org` with a 403, while browsers still load it, so both refreshes scraped 0 records and the sanity guard stopped them. Meanwhile the header shows ⚠️ beside "Updated" (`REFRESH_BLOCKED` in `Header.jsx`), with a tooltip giving the date the cases are from: an app-code change moves "Updated" forward even though the data hasn't. The way back is the ILO allowing the scraper. Once they do, set the variable back to a time and `REFRESH_BLOCKED` to false.
+
+Until then, new cases are added by hand. Save each case page from a browser, run `scraper/import-pages.js` on the folder, then `node scripts/bake-basemaps.js` in `backend/`, and commit the database with any new panels.
+- **It reads the values shown beside each label** (`P3_<ITEM>_DISPLAY`), since a saved page has no form inputs. It turns them back into what the inputs hold, then shapes them with the scraper's own `toRecord` and `iloFields.js`.
+- **It refuses a page whose own Abandonment ID doesn't match its file name.**
+- **The import is a run of its own, a few records long.** So the tooltip says the other cases are from the last full refresh (`lastFullRefresh` in `Header.jsx`).
+- **Check where a new port lands.** Nominatim can answer with a region instead of a port, as it did for Jizan. The fix is a line in `cleaned_ports_list.csv`.
 
 ### API Endpoints
 | Method | Path | Description |
@@ -131,6 +142,7 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 The ILO site (`wwwex.ilo.org`) is an AJAX app; Playwright renders each detail page before parsing. The daily refresh scans every known case ID, then carries on until 30 consecutive empty pages; missing/404 pages are silently skipped. Port geocoding (`geocode.js`) uses Nominatim with the `cleaned_ports_list.csv` overrides (tilde-delimited). Coordinates already in the current snapshot seed the geocoder, so only new ports hit Nominatim. The scraper sends `INGEST_TOKEN` from the environment as a bearer token. If the sanity guard trips or ingest fails, it saves output to `scraper/scraped_YYYY-MM-DD.json` and exits non-zero.
 - **A 403 is the ILO's Cloudflare refusing the scraper.** It isn't retried. `BLOCK_LIMIT` (4) in a row stop the run, with the Cloudflare Ray ID, instead of reading every page as empty and reporting "0 records" forty minutes later.
 - **The scraper says who it is.** It appends `SCRAPER_ID` (project, site, contact) to the browser's own User-Agent, so the ILO can recognise it. It's appended, never substituted: the request still says it's a headless browser. Don't make it pass for a person's.
+- **Every page gets a browser context of its own, so pages never share an ILO session.** The ILO's page keeps its session's last case: an ID with no case, opened in a session that has just shown another, displays that case's details under the ID asked for. In one browser session, IDs 1847–1854 all showed case 864's. A shared context would store gaps and IDs past the newest as copies of their neighbours, and the auto-extend would never see an empty page.
 
 Six fields arrive as markup or packed text and are shaped by `scraper/iloFields.js`, which is pure and tested in CI (`npm test --prefix scraper`):
 - `nationalities`: JSON `[{country, count}]` from "Azerbaijan (11); Türkiye (1)". Only a trailing `(n)` is a count, and `count` is null where the ILO gives none.

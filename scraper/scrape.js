@@ -243,8 +243,12 @@ async function scrapeOne(page, id, portOverrides) {
 
   const fields = await page.evaluate(extractApexFields);
 
-  if (!fields) return null;
+  return fields ? toRecord(id, fields, portOverrides) : null;
+}
 
+// A case's fields, as extractApexFields reads them from its page, to the
+// record ingest stores. import-pages.js shares it for pages saved by hand.
+async function toRecord(id, fields, portOverrides) {
   const { lat, lon } = await geocode(fields.port_of_abandonment, portOverrides);
 
   return {
@@ -285,16 +289,16 @@ function blocked(id, e) {
   return null;
 }
 
-async function scrapeWithRetry(context, id, portOverrides) {
+async function scrapeWithRetry(openPage, id, portOverrides) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const page = await context.newPage();
+    const page = await openPage();
     try {
       const result = await scrapeOne(page, id, portOverrides);
-      await page.close();
+      await page.context().close();
       consecutiveBlocks = 0;
       return result; // null = empty page (not an error)
     } catch (e) {
-      await page.close();
+      await page.context().close();
       if (e instanceof BlockedError) return blocked(id, e);
       if (attempt < MAX_RETRIES) {
         const delay = RETRY_BASE_MS * attempt;
@@ -311,12 +315,12 @@ async function scrapeWithRetry(context, id, portOverrides) {
 // ---------------------------------------------------------------------------
 // Run batches over a list of IDs, logging hits and misses
 // ---------------------------------------------------------------------------
-async function runBatches(context, ids, portOverrides) {
+async function runBatches(openPage, ids, portOverrides) {
   const records = [];
   for (let i = 0; i < ids.length; i += CONCURRENCY) {
     const batch   = ids.slice(i, i + CONCURRENCY);
     const results = await Promise.all(
-      batch.map(id => scrapeWithRetry(context, id, portOverrides))
+      batch.map(id => scrapeWithRetry(openPage, id, portOverrides))
     );
     for (let j = 0; j < batch.length; j++) {
       const r = results[j];
@@ -335,7 +339,7 @@ async function runBatches(context, ids, portOverrides) {
 // ---------------------------------------------------------------------------
 // Auto-extend: probe IDs beyond END until EMPTY_STREAK_LIMIT consecutive misses
 // ---------------------------------------------------------------------------
-async function autoExtend(context, fromId, portOverrides) {
+async function autoExtend(openPage, fromId, portOverrides) {
   console.log(`\nAuto-extending from ID ${fromId} (stops after ${EMPTY_STREAK_LIMIT} consecutive empty pages)…`);
   const records = [];
   let id           = fromId;
@@ -344,7 +348,7 @@ async function autoExtend(context, fromId, portOverrides) {
   while (emptyStreak < EMPTY_STREAK_LIMIT) {
     const batch   = Array.from({ length: CONCURRENCY }, (_, i) => id + i);
     const results = await Promise.all(
-      batch.map(bid => scrapeWithRetry(context, bid, portOverrides))
+      batch.map(bid => scrapeWithRetry(openPage, bid, portOverrides))
     );
     for (let j = 0; j < batch.length; j++) {
       const r = results[j];
@@ -457,7 +461,14 @@ async function main() {
   seedGeocache(prev);
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ userAgent: `${await browserUserAgent(browser)} ${SCRAPER_ID}` });
+  const userAgent = `${await browserUserAgent(browser)} ${SCRAPER_ID}`;
+  // Every page opens in a browser context of its own, so no two share an ILO
+  // session. The ILO's page keeps its session's last case: an ID with no case,
+  // opened in a session that has just shown another, comes back with that
+  // case's details under the ID asked for. In one browser session, IDs
+  // 1847-1854 all showed case 864's. Pages sharing a context would be stored as
+  // copies of their neighbours, and the auto-extend would never see an empty page.
+  const openPage = async () => (await browser.newContext({ userAgent })).newPage();
   let records   = [];
 
   if (RESCAN_OPEN) {
@@ -465,13 +476,13 @@ async function main() {
     console.log(`scraped_at: ${scrapedAt}\n`);
     const ids = await getOpenIds();
     console.log(`Fetched ${ids.length} open IDs from API\n`);
-    records = await runBatches(context, ids, portOverrides);
+    records = await runBatches(openPage, ids, portOverrides);
   } else {
     console.log(`Mode: range scan — IDs ${START}–${END} + auto-extend | concurrency=${CONCURRENCY}`);
     console.log(`scraped_at: ${scrapedAt}\n`);
     const ids = Array.from({ length: END - START + 1 }, (_, i) => START + i);
-    records = await runBatches(context, ids, portOverrides);
-    const extended = await autoExtend(context, END + 1, portOverrides);
+    records = await runBatches(openPage, ids, portOverrides);
+    const extended = await autoExtend(openPage, END + 1, portOverrides);
     records.push(...extended);
   }
 
@@ -517,8 +528,12 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error(err instanceof BlockedError ? `
-❌ ${err.message}` : err);
-  process.exit(1);
-});
+// Run as a script; import-pages.js requires this file for its parser.
+if (require.main === module) {
+  main().catch(err => {
+    console.error(err instanceof BlockedError ? `\n❌ ${err.message}` : err);
+    process.exit(1);
+  });
+}
+
+module.exports = { extractApexFields, toRecord };
