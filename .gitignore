@@ -41,3 +41,8 @@ scraper/scraped_*.json
 
 # OS
 .DS_Store
+
+# Pages and screenshots saved by hand from the ILO site for scraper/import-pages.js.
+# They are the ILO's pages, kept locally to import from; never committed.
+new case pages/
+new case screenshots/
