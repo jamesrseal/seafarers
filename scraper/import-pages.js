@@ -6,12 +6,13 @@
  * Usage:
  *   node import-pages.js <folder> [--dry-run] [--db ../backend/data/seafarers.db]
  *
- * Each file is one case page, saved in Chrome as "Webpage, Single File" and
- * named by its case ID (1835.mhtml). Pages are read the way the scraper reads
- * them (toRecord, iloFields.js) and ingested into the database as one scrape
- * run, so new cases get the New badge and the feed. Afterwards, draw basemaps
- * for any new port (node ../backend/scripts/bake-basemaps.js) and commit the
- * database with them, as the refresh does.
+ * Each file is one case page, saved in Chrome as "Webpage, Single File" under
+ * any name: the case comes from the address it was saved from (savedPages.js).
+ * Pages are read the way the scraper reads them (toRecord, iloFields.js) and
+ * ingested into the database as one scrape run, so new cases get the New badge
+ * and the feed. Afterwards, draw basemaps for any new port
+ * (node ../backend/scripts/bake-basemaps.js) and commit the database with them,
+ * as the refresh does.
  *
  *   --dry-run  read and print the cases, write nothing
  */
@@ -22,6 +23,7 @@ const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
 const { toRecord } = require('./scrape');
 const { loadPortOverrides, seedGeocache } = require('./geocode');
+const { SAVED_PAGE, identifyPages } = require('./savedPages');
 
 const BACKEND = path.join(__dirname, '../backend');
 const Database = require(path.join(BACKEND, 'node_modules/better-sqlite3'));
@@ -104,12 +106,11 @@ async function main() {
     console.error('Usage: node import-pages.js <folder> [--dry-run] [--db <path>]');
     process.exit(1);
   }
-  const files = fs.readdirSync(FOLDER)
-    .map(name => ({ name, id: (name.match(/^(\d+)\.(mhtml|mht|html?)$/i) || [])[1] }))
-    .filter(f => f.id)
-    .sort((a, b) => a.id - b.id);
+  const files = identifyPages(fs.readdirSync(FOLDER)
+    .filter(name => SAVED_PAGE.test(name))
+    .map(name => ({ name, head: fs.readFileSync(path.join(FOLDER, name), 'latin1').slice(0, 4096) })));
   if (!files.length) {
-    console.error(`No saved pages named by case ID (e.g. 1835.mhtml) in ${FOLDER}`);
+    console.error(`No saved pages (.mhtml) in ${FOLDER}`);
     process.exit(1);
   }
 
@@ -131,8 +132,8 @@ async function main() {
     const fields = await page.evaluate(extractSavedFields);
     await page.close();
     if (!fields) throw new Error(`${name}: no case on this page`);
-    // The page names its own case. A file saved under the wrong name, or a page
-    // showing another case's details (the ILO's page can, for an ID with no
+    // The page names its own case. A file with the wrong ID in its name, or a
+    // page showing another case's details (the ILO's page can, for an ID with no
     // case), mustn't be stored under this ID.
     if (parseInt(fields.id, 10) !== Number(id)) {
       throw new Error(`${name}: the page is case ${fields.id}, not ${id}`);

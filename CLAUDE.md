@@ -46,11 +46,11 @@ node scrape.js --start 1 --end 1705 --api http://localhost:3001 --concurrency 4
 node scrape.js --rescan-open --api http://localhost:3001 --concurrency 4
 
 # Import case pages saved by hand while the ILO blocks the scraper
-# (Chrome: Save as "Webpage, Single File", named by case ID, e.g. 1835.mhtml)
+# (Chrome: Save as "Webpage, Single File", under any name)
 node import-pages.js "../new case pages" --dry-run   # read and print, write nothing
 node import-pages.js "../new case pages"             # ingest into ../backend/data/seafarers.db
 
-npm test           # node:test: iloFields.js, no install needed
+npm test           # node:test: iloFields.js, savedPages.js, no install needed
 ```
 
 ## Architecture
@@ -88,7 +88,8 @@ Each variable is `HH:MM` in UTC, or `off`. The script looks back across midnight
 
 Until then, new cases are added by hand. Save each case page from a browser, run `scraper/import-pages.js` on the folder, then `node scripts/bake-basemaps.js` in `backend/`, and commit the database with any new panels.
 - **It reads the values shown beside each label** (`P3_<ITEM>_DISPLAY`), since a saved page has no form inputs. It turns them back into what the inputs hold, then shapes them with the scraper's own `toRecord` and `iloFields.js`.
-- **It refuses a page whose own Abandonment ID doesn't match its file name.**
+- **It takes the case from the address the page was saved from**, written at the top of the `.mhtml` (`scraper/savedPages.js`), so Chrome's default file name is fine. A file named by ID (`1835.mhtml`) has to agree with that address. A page with no ID in either is refused, as are two files for one case.
+- **It refuses a page whose own Abandonment ID doesn't match that ID.**
 - **Check where a new port lands.** Nominatim can answer with a region instead of a port, as it did for Jizan. The fix is a line in `cleaned_ports_list.csv`.
 
 ### API Endpoints
