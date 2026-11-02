@@ -162,6 +162,9 @@ function datasetJsonLd({ cases, firstYear, modified }) {
     url: `${SITE_ORIGIN}/`,
     isBasedOn: ILO_DATABASE_URL,
     isAccessibleForFree: true,
+    // The ILO's terms, not CC BY 4.0: it applies that automatically only to data
+    // from 3 May 2023, and many cases are older.
+    license: { '@type': 'CreativeWork', name: 'ILO rights and permissions', url: 'https://www.ilo.org/rights-and-permissions' },
     creator: { '@type': 'Organization', name: SITE_NAME, url: `${SITE_ORIGIN}/` },
     keywords: ['seafarer abandonment', 'abandoned seafarers', 'abandoned ships', 'maritime labour', 'MLC 2006', 'ILO', 'IMO'],
     spatialCoverage: 'Worldwide',

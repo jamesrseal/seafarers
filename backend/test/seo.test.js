@@ -111,6 +111,7 @@ test('the home page keeps its own tags and adds the Dataset', () => {
   assert.match(dataset.description, /^The 1790 cases .*, reported since 2004,/);
   assert.equal(dataset.temporalCoverage, '2004/..');
   assert.equal(dataset.dateModified, '2026-09-17T10:24:17.238Z');
+  assert.equal(dataset.license.url, 'https://www.ilo.org/rights-and-permissions');
 });
 
 test('the sitemap lists the home page and each case with its last change', () => {

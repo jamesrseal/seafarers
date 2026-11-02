@@ -111,7 +111,7 @@ The app only uses `/` and its query string. `backend/src/routes/site.js` serves 
 - **Keep the `?ship=` form.** The Bluesky poster reads the cases it has posted back from it.
 - **A shared case shows its own card**, not the site's map image: `casePage` points `og:image`/`twitter:image` at `/og/case-<id>.png`, with alt text. The Bluesky poster still attaches the static `og-image.png` as its thumbnail.
 - **Status colours live in `backend/src/status.js`**, copied from `frontend/src/utils/statusColors.js` because the backend is CommonJS and the site is ESM — the bind `bluesky/src/status.js` is in. `test/status.test.js` reads the site's file and fails on drift.
-- **`/`** adds a schema.org `Dataset` (JSON-LD) for Google Dataset Search.
+- **`/`** adds a schema.org `Dataset` (JSON-LD) for Google Dataset Search. Its `license` links to the ILO's rights page rather than naming CC BY 4.0, which the ILO applies automatically only to data from 3 May 2023; 735 of the 1,817 cases in November 2026 were notified before then.
 - **`/?view=about`, `?view=report` and `?view=dashboard`** are pages in their own right (`VIEW_PAGES` in `seo.js`), each with its own title, description and canonical URL. Their text stays in their React components for search engines to render, so nothing is written into `#root`. The other views show the same cases as the map, so they keep the home page's tags. A case (`?ship=`) wins over the view, since the app opens its detail on top.
 - **`/sitemap.xml`** lists every case, with its latest `scraped_at` as `lastmod`. `frontend/public/robots.txt` points to it. Don't disallow `/api/` there: Google needs it to render the app.
 - **Any other path is a 404.** `express.static` runs with `index: false` so `/` reaches the router.
