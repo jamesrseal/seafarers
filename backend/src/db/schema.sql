@@ -47,6 +47,17 @@ CREATE TABLE IF NOT EXISTS scrape_runs (
   inserted    INTEGER NOT NULL   -- rows stored (new or changed ships)
 );
 
+-- Cases taken out by hand because the ILO withdrew them (scripts/remove-case.js).
+-- A withdrawn case's page opens empty and the scraper skips it, so nothing else
+-- records that it went, or that the site changed when it did.
+CREATE TABLE IF NOT EXISTS removed_cases (
+  abandonment_id  TEXT NOT NULL,
+  removed_at      DATETIME NOT NULL,
+  ship_name       TEXT,
+  reason          TEXT,
+  PRIMARY KEY (abandonment_id, removed_at)
+);
+
 -- Backfill runs ingested before scrape_runs existed. Every run with stored
 -- rows is present afterwards, so this is a no-op on later startups.
 INSERT OR IGNORE INTO scrape_runs (scraped_at, received, inserted)

@@ -9,11 +9,11 @@ function latest(...values) {
   return times.length ? new Date(Math.max(...times)) : null;
 }
 
-// The ILO's Cloudflare has refused the daily refresh since 4 October 2026.
-// While this is true the header says so beside "Updated", with the date the
-// cases were last updated: "Updated" also moves for an app-code change, and
-// this date only for the data. Set it to false once the ILO allows the
-// scraper again.
+// The ILO's Cloudflare has refused the daily refresh since 4 October 2026, and
+// the cases are checked by hand instead. While this is true the header says so
+// beside "Updated", with the date the cases last changed (an import or a case
+// removed by hand): "Updated" also moves for an app-code change, and this date
+// only for the data. Set it to false once the ILO allows the scraper again.
 const REFRESH_BLOCKED = true;
 
 function fmtDateTime(date) {
@@ -25,14 +25,14 @@ function fmtDateTime(date) {
 }
 
 export default function Header() {
-  // undefined while /api/scrapes loads, so the app's commit time doesn't show
-  // briefly and then jump forward; null if it failed or has no runs.
+  // undefined while /api/scrapes/updated loads, so the app's commit time doesn't
+  // show briefly and then jump forward; null if it failed or has no runs.
   const [dataUpdated, setDataUpdated] = useState(undefined);
 
   useEffect(() => {
-    fetch('/api/scrapes')
+    fetch('/api/scrapes/updated')
       .then(r => r.json())
-      .then(runs => setDataUpdated(runs[0]?.scraped_at ?? null))
+      .then(body => setDataUpdated(body.updated_at ?? null))
       .catch(() => setDataUpdated(null));
   }, []);
 
@@ -126,19 +126,19 @@ export default function Header() {
               <span
                 tabIndex={0}
                 role="img"
-                aria-label="Warning"
+                aria-label="About updates"
                 aria-describedby="refresh-blocked"
-                className="mr-1 cursor-help rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-yellow-300"
+                className="mr-1 cursor-help rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-300"
               >
-                ⚠️
+                ℹ️
               </span>
               <span
                 id="refresh-blocked"
                 role="tooltip"
                 className="invisible group-hover:visible group-focus-within:visible absolute right-0 top-full mt-1 w-60 z-[1100] rounded bg-gray-800 px-2.5 py-1.5 text-left text-gray-200 shadow-lg"
               >
-                The ILO has started blocking automated access to its database.
-                {dataUpdated && <> Cases last updated {fmtDateTime(new Date(dataUpdated))}.</>}
+                The ILO blocks automated access to its database, so the cases are checked by hand for now.
+                {dataUpdated && <> Last checked against the ILO: {fmtDateTime(new Date(dataUpdated))}.</>}
               </span>
             </span>
           )}

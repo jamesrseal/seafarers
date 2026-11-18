@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const { ingestRun } = require('../ingest');
+const { dataUpdatedAt } = require('../dataUpdated');
 
 // Ingest writes to the live database, so it requires the shared secret in
 // INGEST_TOKEN, sent as "Authorization: Bearer <token>". With no token set,
@@ -30,6 +31,12 @@ router.get('/', (req, res) => {
     `SELECT scraped_at, received AS record_count, inserted FROM scrape_runs ORDER BY scraped_at DESC`
   ).all();
   res.json(runs);
+});
+
+// When the cases last changed, for the header: a run, an import or a case
+// removed by hand. null before the first run.
+router.get('/updated', (req, res) => {
+  res.json({ updated_at: dataUpdatedAt(db) });
 });
 
 // Bulk ingest from scraper: { scraped_at: ISO string, ships: [...] }
