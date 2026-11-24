@@ -62,7 +62,7 @@ function selectClass(active, full = false) {
 
 // The search box fills its wrapper, which is what varies: fixed in the drawer,
 // flexible in the desktop bar so the row's buttons never wrap to a line of
-// their own when Reset appears.
+// their own.
 function inputClass(active) {
   return `w-full border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${
     active ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-gray-300 bg-white text-gray-700'
@@ -191,13 +191,29 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
       <>
         <div className={`flex flex-col gap-1 ${full ? '' : 'flex-1 min-w-[11rem] max-w-56'}`}>
           <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Search</label>
-          <input
-            type="text"
-            placeholder="Ship, insurer or circumstances…"
-            value={filters.q}
-            onChange={set('q')}
-            className={inputClass(!!filters.q)}
-          />
+          {/* The × clears the search alone; Reset clears everything. */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Ship, insurer or circumstances…"
+              value={filters.q}
+              onChange={set('q')}
+              className={`${inputClass(!!filters.q)} ${filters.q ? 'pr-8' : ''}`}
+            />
+            {filters.q && (
+              <button
+                type="button"
+                onClick={() => setFilters({ ...filters, q: '' })}
+                aria-label="Clear search"
+                title="Clear search"
+                className="absolute inset-y-0 right-0 flex items-center px-2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
         {PRIMARY.map(select(full))}
       </>
@@ -228,14 +244,16 @@ export default function FilterBar({ filters, setFilters, ships, facets, total, o
                 onClick={onShowWelcome}
                 className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100"
               />
-              {hasFilter && (
-                <button
-                  onClick={onClearAll}
-                  className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
-                >
-                  Reset
-                </button>
-              )}
+              {/* Always there, so it's findable; greyed out until a filter is set.
+                  "Reset" rather than "Reset filters": the longer label wraps the row. */}
+              <button
+                onClick={onClearAll}
+                disabled={!hasFilter}
+                title="Reset all filters"
+                className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
+              >
+                Reset
+              </button>
             </div>
           </div>
           {moreToggle(false)}
