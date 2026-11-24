@@ -25,7 +25,11 @@ function coverZoom(map) {
   return Math.log2(Math.max(size.x / (se.x - nw.x), size.y / (se.y - nw.y)));
 }
 
-function MapLegend() {
+// The legend's second block describes how a marker's strength is chosen: by
+// the case's last activity on the Map, by its age on the Timeline.
+const RECENCY_SECTION = { title: 'Last activity', items: RECENCY_LEGEND };
+
+function MapLegend({ section = RECENCY_SECTION }) {
   const [open, setOpen] = useState(false);
   const maxR = SIZE_EXAMPLES[SIZE_EXAMPLES.length - 1].r;
   const svgH = maxR * 2 + 4;
@@ -54,9 +58,9 @@ function MapLegend() {
               </div>
             </div>
             <div>
-              <div className="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1.5">Last activity</div>
+              <div className="font-semibold text-gray-500 uppercase tracking-wide text-[10px] mb-1.5">{section.title}</div>
               <div className="space-y-1">
-                {RECENCY_LEGEND.map(({ label, fillOpacity, weight, strokeColor }) => (
+                {section.items.map(({ label, fillOpacity, weight, strokeColor }) => (
                   <div key={label} className="flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{
                       background: '#9ca3af',
@@ -103,7 +107,7 @@ function MapLegend() {
 // the map is close enough (see ../utils/jitter.js). The spread is worked out in
 // pixels and turned back into coordinates at the current zoom, so it keeps its
 // shape and spacing however far in you go.
-function ShipMarkers({ ships, onSelect, highlighted }) {
+function ShipMarkers({ ships, onSelect, highlighted, markerStyle }) {
   const map = useMap();
   const [zoom, setZoom] = useState(() => map.getZoom());
   useMapEvent('zoomend', () => setZoom(map.getZoom()));
@@ -129,6 +133,9 @@ function ShipMarkers({ ships, onSelect, highlighted }) {
     const { fill } = statusColor(ship.ship_status);
     const r = markerRadius(ship.num_seafarers);
     const recency = markerRecency(ship.last_activity_date);
+    const style = markerStyle
+      ? markerStyle(ship)
+      : { fillOpacity: recency.fillOpacity, color: recency.strokeColor, weight: recency.weight };
     return (
       <CircleMarker
         key={ship.abandonment_id}
@@ -136,9 +143,9 @@ function ShipMarkers({ ships, onSelect, highlighted }) {
         radius={isHighlighted ? r + 5 : r}
         pathOptions={{
           fillColor: fill,
-          fillOpacity: isHighlighted ? 1 : recency.fillOpacity,
-          color: isHighlighted ? '#fff' : recency.strokeColor,
-          weight: isHighlighted ? 2.5 : recency.weight,
+          fillOpacity: isHighlighted ? 1 : style.fillOpacity,
+          color: isHighlighted ? '#fff' : style.color,
+          weight: isHighlighted ? 2.5 : style.weight,
         }}
         eventHandlers={{ click: () => onSelect(ship) }}
       >
@@ -163,6 +170,14 @@ function MapController({ ship, view, portFilter, countryFilter, ships }) {
   const pendingCountryFit = useRef(null);
 
   useEffect(() => { map.invalidateSize(); }, [view]);
+
+  // Leaflet only notices the window resizing, not its own box. The Timeline's
+  // player opens and minimises under the map, so watch the container itself.
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
 
   useEffect(() => {
     // Leaflet rounds every zoom to a whole level, which puts a fractional
@@ -229,12 +244,20 @@ function MapController({ ship, view, portFilter, countryFilter, ships }) {
   return null;
 }
 
-export default function Map({ ships, onSelect, highlighted, view, portFilter, countryFilter }) {
+// `markerStyle` and `legendSection` restyle the markers and the legend's second
+// block (the Timeline draws a case by its age). `fitShips` are the cases a port
+// or country filter zooms to, when they aren't all of `ships`: the Timeline
+// shows only those abandoned by the month on its scrubber.
+export default function Map({ ships, onSelect, highlighted, view, portFilter, countryFilter, markerStyle, legendSection, fitShips }) {
   const mappable = useMemo(() => ships.filter(s => s.port_latitude && s.port_longitude), [ships]);
+  const fittable = useMemo(
+    () => (fitShips ? fitShips.filter(s => s.port_latitude && s.port_longitude) : mappable),
+    [fitShips, mappable],
+  );
 
   return (
     <div className="relative h-full w-full">
-    <MapLegend />
+    <MapLegend section={legendSection} />
     <MapContainer
       center={[20, 10]}
       zoom={2}
@@ -247,8 +270,8 @@ export default function Map({ ships, onSelect, highlighted, view, portFilter, co
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapController ship={highlighted} view={view} portFilter={portFilter} countryFilter={countryFilter} ships={mappable} />
-      <ShipMarkers ships={mappable} onSelect={onSelect} highlighted={highlighted} />
+      <MapController ship={highlighted} view={view} portFilter={portFilter} countryFilter={countryFilter} ships={fittable} />
+      <ShipMarkers ships={mappable} onSelect={onSelect} highlighted={highlighted} markerStyle={markerStyle} />
     </MapContainer>
     </div>
   );

@@ -1,5 +1,6 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { formatIloDate } from '../utils/formatDate';
+import { useWidth } from '../hooks/useWidth';
 import { STATUS_COLORS } from '../utils/statusColors';
 
 // Chart colours, checked with the dataviz palette validator against the white
@@ -39,19 +40,6 @@ function niceTicks(max, target = 4) {
   const ticks = [];
   for (let v = 0; v <= top; v += step) ticks.push(v);
   return { top, ticks };
-}
-
-// Width of an element, kept current as the layout changes, so the SVG is drawn
-// at real pixels and its text stays the same size at every screen width.
-function useWidth() {
-  const ref = useRef(null);
-  const [width, setWidth] = useState(0);
-  useLayoutEffect(() => {
-    const observer = new ResizeObserver(([entry]) => setWidth(Math.floor(entry.contentRect.width)));
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
 }
 
 // ---------------------------------------------------------------------------

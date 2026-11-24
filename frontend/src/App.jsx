@@ -7,6 +7,7 @@ import ShipDetail from './components/ShipDetail';
 import Dashboard from './components/Dashboard';
 import ReportForm from './components/ReportForm';
 import About from './components/About';
+import Timeline from './components/Timeline';
 import WelcomeModal, { hasSeenWelcome } from './components/WelcomeModal';
 import { useShips, useFacets } from './hooks/useShips';
 import { readStateFromUrl, writeStateToUrl, EMPTY_FILTERS } from './utils/urlState';
@@ -15,6 +16,7 @@ const VIEWS = [
   ['map', 'Map', 'Map'],
   ['split', 'Map + Table', 'Split'],
   ['table', 'Table', 'Table'],
+  ['timeline', 'Timeline', 'Timeline'],
   ['dashboard', 'Dashboard', 'Stats'],
   ['report', 'Report Seafarer Abandonment', 'Report'],
   ['about', 'About', 'About'],
@@ -106,6 +108,8 @@ export default function App() {
         </div>
       ) : loading ? (
         <div className="flex-1 flex items-center justify-center text-gray-400">Loading…</div>
+      ) : view === 'timeline' ? (
+        <Timeline ships={ships} onSelect={setSelectedShip} portFilter={filters.port} countryFilter={filters.country} />
       ) : (
         <div className={`flex-1 overflow-hidden flex ${view === 'table' ? 'flex-col' : view === 'split' ? 'flex-col sm:flex-row' : 'flex-row'}`}>
           {view !== 'table' && (

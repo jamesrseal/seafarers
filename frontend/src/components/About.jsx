@@ -89,6 +89,7 @@ export default function About() {
             aboard, what was reported, and any updates since, with a link to the case on the ILO's own site.
             The Table view lists the same cases, and the Dashboard charts them. New
             cases per month come from the date each case was notified to the ILO.
+            The Timeline plays the cases back month by month, by the date each ship was abandoned.
           </p>
         </Section>
 

@@ -5,7 +5,7 @@
 // Each is also the /api/ships query parameter of the same name.
 export const FILTER_KEYS = ['status', 'flag', 'port', 'country', 'q', 'nationality', 'vessel', 'payment', 'repatriation'];
 const DEFAULT_VIEW = 'map';
-const VALID_VIEWS = ['map', 'split', 'table', 'dashboard', 'report', 'about'];
+const VALID_VIEWS = ['map', 'split', 'table', 'timeline', 'dashboard', 'report', 'about'];
 
 export const EMPTY_FILTERS = Object.fromEntries(FILTER_KEYS.map(k => [k, '']));
 
