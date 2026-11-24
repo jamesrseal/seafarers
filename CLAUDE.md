@@ -21,7 +21,10 @@ npm run dev        # nodemon watch mode (requires nodemon in devDeps)
 npm test           # node:test: case pages, Dataset, sitemap, cards, basemaps
 
 node scripts/bake-basemaps.js   # redraw assets/basemaps by hand; the daily refresh does this itself
+node scripts/render-timeline-video.js --out timeline.mp4          # the Timeline as a 1080p MP4 (needs ffmpeg; --ffmpeg <path>)
+node scripts/render-timeline-video.js --preview 2023-06 --out f.png   # one month's frame
 ```
+The video places cases with the site's own `frontend/src/utils/timeline.js`, opens on the finished map (Reddit's preview frame), and draws on OSM zoom-3 tiles cached in `.tile-cache`, darkened and with labels filtered out.
 Runs on port 3001.
 
 ### Frontend
