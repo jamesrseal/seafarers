@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { STATUS_COLORS, statusLabel, RECENCY_LEGEND } from '../utils/statusColors';
 import { nationalities } from '../utils/iloFields';
 import { vesselType } from '../utils/vesselTypes';
+import { countryNames, portCountry } from '../utils/portCountry';
 import CasesOverTime from './CasesOverTime';
 import FlagIcon from './FlagIcon';
 
@@ -13,12 +14,6 @@ function recencyTier(lastActivityDate) {
   if (ageDays <= 365)  return 0;
   if (ageDays <= 1095) return 1;
   return 2;
-}
-
-function portCountry(port) {
-  if (!port) return null;
-  const parts = port.split(',');
-  return parts.length > 1 ? parts[parts.length - 1].trim() : null;
 }
 
 function topN(ships, keyFn, valueFn, n = 10) {
@@ -148,10 +143,11 @@ function RecentlyUpdated({ ships }) {
   );
 }
 
-function Section({ title, note, children }) {
+function Section({ title, description, note, children }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">{title}</h2>
+      <h2 className={`text-xs font-semibold text-gray-500 uppercase tracking-wide ${description ? 'mb-1' : 'mb-4'}`}>{title}</h2>
+      {description && <p className="text-xs text-gray-500 mb-4">{description}</p>}
       {children}
       {note && <p className="text-xs text-gray-400 mt-3">{note}</p>}
     </div>
@@ -180,7 +176,8 @@ export default function Dashboard() {
   const activeRecently = ships.filter(s => recencyTier(s.last_activity_date) === 0).length;
 
   const topPorts            = topN(ships, s => s.port_of_abandonment,             () => 1,                               limit);
-  const topCountries        = topN(ships, s => portCountry(s.port_of_abandonment), () => 1,                               limit);
+  const countries           = countryNames(ships);
+  const topCountries        = topN(ships, s => portCountry(s.port_of_abandonment, countries), () => 1,                    limit);
   const topFlagsByShips     = topN(ships, s => s.flag,                             () => 1,                               limit);
   const topFlagsBySeafarers = topN(ships, s => s.flag,                             s => parseInt(s.num_seafarers) || 0,   limit);
 
@@ -250,26 +247,32 @@ export default function Dashboard() {
 
         {/* 2-column charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Section title="Ports by ships abandoned">
+          <Section title="Ports by ships abandoned"
+            description="The ports where the most ships have been abandoned.">
             <BarChart data={topPorts} color="#60a5fa" />
           </Section>
-          <Section title="Countries by ships abandoned">
+          <Section title="Countries by ships abandoned"
+            description="The countries where the most ships have been abandoned, adding up each country's ports.">
             <BarChart data={topCountries} color="#34d399" />
           </Section>
-          <Section title="Flags by ships abandoned">
+          <Section title="Flags by ships abandoned"
+            description="The flags flown by the most abandoned ships.">
             <BarChart data={topFlagsByShips} color="#f472b6" icon={name => <FlagIcon flag={name} />} />
           </Section>
-          <Section title="Flags by seafarers abandoned">
+          <Section title="Flags by seafarers abandoned"
+            description="The flags whose abandoned ships had the most seafarers on board in total.">
             <BarChart data={topFlagsBySeafarers} color="#fb923c" icon={name => <FlagIcon flag={name} />} />
           </Section>
 
           {/* Hidden until a refresh has captured the ILO field: before that it is NULL on every case. */}
           {casesWithCrew > 0 && <>
             <Section title="Nationalities by ships abandoned"
+              description="How many abandoned ships had at least one crew member of each nationality."
               note={`Listed for ${ofAll(casesWithCrew)}. A crew of several nationalities counts once for each.`}>
               <BarChart data={topNationalitiesByShips} color="#a78bfa" icon={name => <FlagIcon flag={name} />} />
             </Section>
             <Section title="Nationalities by seafarers abandoned"
+              description="How many abandoned seafarers there were of each nationality."
               note={`${seafarersCounted.toLocaleString()} seafarers, from the ILO's head counts.${casesUncounted
                 ? ` ${casesUncounted.toLocaleString()} cases name a nationality without one; those seafarers aren't included.` : ''}`}>
               <BarChart data={topNationalitiesBySeafarers} color="#818cf8" icon={name => <FlagIcon flag={name} />} />
@@ -277,10 +280,12 @@ export default function Dashboard() {
           </>}
           {typed.length > 0 && <>
             <Section title="Vessel types by ships abandoned"
+              description="The types of ship abandoned most often."
               note={`Recorded for ${ofAll(typed.length)}. Types the ILO spells two ways, such as “General Cargo” and “General Cargo Ship”, count as one.`}>
               <BarChart data={topTypesByShips} color="#2dd4bf" />
             </Section>
             <Section title="Vessel types by seafarers abandoned"
+              description="The types of ship whose abandonments affected the most seafarers in total."
               note={`Seafarers on the ${typed.length.toLocaleString()} cases with a recorded type.`}>
               <BarChart data={topTypesBySeafarers} color="#22d3ee" />
             </Section>

@@ -14,10 +14,28 @@ const LATEST = `JOIN (SELECT abandonment_id AS latest_id, MAX(scraped_at) AS lat
 // nationalities stores '', and json_each('') is an error, not an empty list.
 const CREW = `json_each(NULLIF(ships.nationalities, ''))`;
 
-function countryOf(port) {
+// The country a port is in: what follows its last comma. The ILO now and then
+// gives the country alone ("Singapore", "Malta"), so a port with no comma is a
+// country when the cases use that name as one elsewhere (`countries`): a flag,
+// a crew nationality or another port's country. "At sea" isn't. The filter's
+// `port_of_abandonment = ?` already matches those. frontend/src/utils/portCountry.js
+// applies the same rule to the dashboard.
+function countryOf(port, countries) {
   if (!port) return null;
   const parts = port.split(',');
-  return parts.length > 1 ? parts[parts.length - 1].trim() : null;
+  if (parts.length > 1) return parts[parts.length - 1].trim();
+  return countries.has(port.trim()) ? port.trim() : null;
+}
+
+function countryNames(db) {
+  const names = new Set(db.prepare(
+    `SELECT flag AS v FROM ships WHERE flag <> ''
+     UNION SELECT json_extract(crew.value, '$.country') FROM ships JOIN ${CREW} crew`
+  ).all().map(r => r.v));
+  for (const { port } of db.prepare(`SELECT DISTINCT port_of_abandonment AS port FROM ships WHERE port_of_abandonment LIKE '%,%'`).all()) {
+    names.add(port.split(',').pop().trim());
+  }
+  return names;
 }
 
 // Build SQL filter clauses from query params. `exclude` lists filter keys to
@@ -118,9 +136,10 @@ function facets(db, f) {
   const port = counted(groupBy('port_of_abandonment', ['port'])).sort(byName);
 
   // Country — derived from the port string; both geo filters removed
+  const countries = countryNames(db);
   const countryMap = {};
   for (const r of groupBy('port_of_abandonment', ['port', 'country'])) {
-    const c = countryOf(r.v);
+    const c = countryOf(r.v, countries);
     if (c) countryMap[c] = (countryMap[c] || 0) + r.c;
   }
   const country = Object.keys(countryMap).sort().map(v => ({ value: v, count: countryMap[v] }));

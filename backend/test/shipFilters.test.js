@@ -106,6 +106,22 @@ test('the new facets list what the cases have, blanks and uncaptured cases left 
   for (const key of ['nationality', 'vessel', 'payment', 'repatriation']) assert.equal(f[key].total, 5, key);
 });
 
+test('a port given as a country alone counts as that country, and the filter finds it', () => {
+  const geo = new Database(':memory:');
+  geo.exec(fs.readFileSync(SCHEMA, 'utf8'));
+  migrate(geo);
+  ingestRun(geo, R1, [
+    ship('1', { port_of_abandonment: 'Keppel, Singapore' }),
+    ship('2', { port_of_abandonment: 'Singapore' }),
+    ship('3', { port_of_abandonment: 'Malta', flag: 'Malta' }),
+    ship('4', { port_of_abandonment: 'At sea' }),
+    ship('5', { port_of_abandonment: '' }),
+  ]);
+  assert.deepEqual(values(facets(geo, {}).country), ['Malta: 1', 'Singapore: 2'], '"At sea" and the blank have no country');
+  const { sql, params } = whereSql({ country: 'Singapore' });
+  assert.equal(geo.prepare(`SELECT COUNT(*) AS c FROM ships ${sql}`).get(...params).c, 2, 'the facet count matches what the filter finds');
+});
+
 test('each facet is counted with the other filters, not its own', () => {
   const f = facets(db, { nationality: 'India' });
   assert.deepEqual(values(f.nationality), ['Georgia: 1', 'Greece: 1', 'India: 2', 'Ukraine: 1']);
