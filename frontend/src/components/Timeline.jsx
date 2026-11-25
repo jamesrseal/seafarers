@@ -271,11 +271,18 @@ export default function Timeline({ ships, onSelect, portFilter, countryFilter })
                   <ToolButton label="Next month" icon="forward" onClick={() => goTo(month + 1)} disabled={month >= last} />
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-gray-900 tabular-nums">{label}</div>
-                  <div className="text-xs text-gray-600 tabular-nums">
-                    {plural(cases, 'case')} · {plural(seafarers, 'seafarer')} {scope}
-                    {thisMonth > 0 && <span className="text-gray-900 font-medium"> · +{thisMonth} this month</span>}
+                {/* Two lines of fixed height that never wrap: the numbers and month
+                    names change length as it plays, and a line that wrapped would
+                    resize the drawer, and the map with it, every few months on a phone.
+                    The scope is left to the mode toggle there. */}
+                <div className="min-w-0 flex-1 tabular-nums">
+                  <div className="h-5 leading-5 truncate">
+                    <span className="text-sm font-semibold text-gray-900">{label}</span>
+                    {thisMonth > 0 && <span className="text-xs text-gray-900 font-medium"> · +{thisMonth} this month</span>}
+                  </div>
+                  <div className="h-4 leading-4 truncate text-xs text-gray-600">
+                    {plural(cases, 'case')} · {plural(seafarers, 'seafarer')}
+                    <span className="hidden sm:inline"> {scope}</span>
                   </div>
                 </div>
 
